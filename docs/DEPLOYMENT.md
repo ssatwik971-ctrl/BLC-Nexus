@@ -41,6 +41,14 @@ HTTPS is enforced automatically in production (HTTP requests are redirected; Rai
 4. Deploy. `frontend/vercel.json` already rewrites all paths to `index.html` so deep links like `/app/forums` work.
 5. Add your custom domain (e.g. `blcnexus.com`) in Vercel, then update `FRONTEND_URL` / `CORS_ORIGINS` on Railway to match and redeploy the API.
 
+### Using Netlify for the frontend instead of Vercel
+
+Netlify is a good fit for the **React frontend only** (static files). It cannot host the API: the Express server needs to run continuously, talk to PostgreSQL, and keep uploaded documents on a persistent disk, which Netlify (static hosting + short-lived functions) does not provide. Host the API and database on Railway/Render/Fly.io (section 1), then:
+
+1. **Add new site → Import an existing project →** pick the `BLC-Nexus` repo. The root `netlify.toml` already sets base directory `frontend`, build command `npm run build`, publish directory `dist` and the single-page-app redirect (also backed up by `frontend/public/_redirects`).
+2. **Site configuration → Environment variables:** `VITE_API_URL` = your API origin (e.g. `https://blc-nexus-api.up.railway.app`, no trailing slash, no `/api`). Redeploy after changing it, because Vite bakes it in at build time.
+3. On the API host, set `FRONTEND_URL` and `CORS_ORIGINS` to your Netlify URL (e.g. `https://your-site.netlify.app` or your custom domain) and redeploy the API. Without this, the browser blocks every API call.
+
 ## 3. First login
 
 Sign in at `/login` with the seeded admin (`admin@blcnexus.local` / `ChangeMe!2026` unless you set `SEED_ADMIN_*`). You are redirected to **Profile** and must change the password before anything else. Then:

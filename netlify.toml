@@ -1,0 +1,15 @@
+# Netlify config for the BLC Nexus FRONTEND only.
+# The API (Express + PostgreSQL + file uploads) must be hosted elsewhere — see docs/DEPLOYMENT.md.
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Single-page app: send every path to index.html so deep links like /app/forums work.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
