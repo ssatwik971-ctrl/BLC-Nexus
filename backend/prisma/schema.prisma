@@ -1,0 +1,374 @@
+// BLC Nexus — database schema (PostgreSQL via Prisma)
+// Unofficial fan companion for Ticarium: Business Tycoon. All "money"/"coin"
+// values are in-game resources tracked manually. No real-money features.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MEMBER
+  OFFICER
+  ADMIN
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  LATE
+  WAIVED
+}
+
+enum PledgeStatus {
+  PENDING
+  FULFILLED
+  CANCELLED
+}
+
+enum RewardStatus {
+  AVAILABLE
+  PURCHASED
+  CLAIMED
+}
+
+enum EventType {
+  CEO_RACE
+  LEADERBOARD
+  CHALLENGE
+  MEETING
+  OTHER
+}
+
+enum RsvpStatus {
+  GOING
+  MAYBE
+  NOT_GOING
+}
+
+enum VoteStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum BoardKind {
+  ACTIVITY
+  DONATION
+}
+
+model User {
+  id                 String     @id @default(uuid())
+  email              String     @unique
+  passwordHash       String?
+  inGameName         String     @unique
+  playerId           String?
+  role               Role       @default(MEMBER)
+  status             UserStatus @default(INVITED)
+  avatarUrl          String?
+  timezone           String     @default("UTC")
+  contact            String?
+  hiddenFields       String[]   @default([])
+  notifyEmail        Boolean    @default(true)
+  mustChangePassword Boolean    @default(false)
+  inviteTokenHash    String?    @unique
+  inviteExpires      DateTime?
+  resetTokenHash     String?    @unique
+  resetExpires       DateTime?
+  joinedAt           DateTime   @default(now())
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  assignments   MaintenanceAssignment[]
+  pledges       DonationPledge[]
+  rsvps         EventRsvp[]
+  threads       ForumThread[]
+  posts         ForumPost[]
+  upvotes       PostUpvote[]
+  voteRecords   VoteRecord[]
+  notifications Notification[]
+  application   Application?
+}
+
+model Application {
+  id            String            @id @default(uuid())
+  email         String
+  inGameName    String
+  playerId      String
+  level         Int?
+  power         String?
+  weeklyActivity String?
+  stats         Json?
+  reason        String
+  references    String?
+  status        ApplicationStatus @default(PENDING)
+  tokenHash     String            @unique
+  decisionNote  String?
+  reviewedAt    DateTime?
+  userId        String?           @unique
+  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt     DateTime          @default(now())
+
+  @@index([status])
+}
+
+model Office {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  description     String?
+  level           Int      @default(1)
+  weeklyMoneyCost Float    @default(0)
+  weeklyCoinCost  Int      @default(0)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  assignments MaintenanceAssignment[]
+}
+
+model MaintenanceAssignment {
+  id        String        @id @default(uuid())
+  officeId  String
+  userId    String
+  weekStart DateTime      @db.Date
+  dueAt     DateTime?
+  status    PaymentStatus @default(UNPAID)
+  paidAt    DateTime?
+  note      String?
+  createdAt DateTime      @default(now())
+
+  office Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([officeId, userId, weekStart])
+  @@index([weekStart])
+}
+
+model RewardItem {
+  id           String       @id @default(uuid())
+  name         String
+  description  String?
+  donationCost Float
+  currency     String       @default("coins")
+  type         String       @default("general")
+  status       RewardStatus @default(AVAILABLE)
+  createdAt    DateTime     @default(now())
+
+  pledges DonationPledge[]
+}
+
+model DonationPledge {
+  id           String       @id @default(uuid())
+  rewardItemId String
+  userId       String
+  amount       Float
+  status       PledgeStatus @default(PENDING)
+  note         String?
+  createdAt    DateTime     @default(now())
+  fulfilledAt  DateTime?
+
+  reward RewardItem @relation(fields: [rewardItemId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime?
+  type        EventType @default(OTHER)
+  rsvpEnabled Boolean   @default(true)
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  rsvps EventRsvp[]
+
+  @@index([startTime])
+}
+
+model EventRsvp {
+  id      String     @id @default(uuid())
+  eventId String
+  userId  String
+  status  RsvpStatus @default(GOING)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model ForumCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  threads ForumThread[]
+}
+
+model ForumThread {
+  id         String   @id @default(uuid())
+  categoryId String
+  userId     String
+  title      String
+  pinned     Boolean  @default(false)
+  locked     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts    ForumPost[]
+
+  @@index([categoryId])
+}
+
+model ForumPost {
+  id        String   @id @default(uuid())
+  threadId  String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  thread  ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  upvotes PostUpvote[]
+
+  @@index([threadId])
+}
+
+model PostUpvote {
+  postId String
+  userId String
+
+  post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+}
+
+model WikiPage {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  content     String
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Vote {
+  id           String     @id @default(uuid())
+  title        String
+  description  String?
+  options      Json
+  eligibleRole Role       @default(MEMBER)
+  startTime    DateTime   @default(now())
+  endTime      DateTime
+  status       VoteStatus @default(OPEN)
+  createdById  String?
+  createdAt    DateTime   @default(now())
+
+  records VoteRecord[]
+}
+
+model VoteRecord {
+  id             String   @id @default(uuid())
+  voteId         String
+  userId         String
+  optionSelected String
+  votedAt        DateTime @default(now())
+
+  vote Vote @relation(fields: [voteId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([voteId, userId])
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  fileName      String
+  storedName    String   @unique
+  mimeType      String
+  size          Int
+  category      String   @default("General")
+  visibleToRole Role     @default(MEMBER)
+  uploadedById  String?
+  createdAt     DateTime @default(now())
+}
+
+model AuditSnapshot {
+  id          String   @id @default(uuid())
+  date        DateTime @db.Date
+  power       Float
+  rank        Int?
+  memberCount Int?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
+// Admin action log (who changed what in BLC Nexus)
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  detail    Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model LeaderboardEntry {
+  id        String    @id @default(uuid())
+  kind      BoardKind
+  name      String
+  score     Float
+  rank      Int
+  updatedAt DateTime  @updatedAt
+
+  @@index([kind, rank])
+}
+
+model SiteSetting {
+  key   String @id
+  value Json
+}
