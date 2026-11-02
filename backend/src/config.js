@@ -25,7 +25,7 @@ export const config = {
   jwtExpiresIn: env.JWT_EXPIRES_IN || '7d',
   bcryptRounds: isTest ? 4 : 12,
   uploadDir: env.UPLOAD_DIR ? path.resolve(env.UPLOAD_DIR) : path.resolve('uploads'),
-  maxUploadMb: Number(env.MAX_UPLOAD_MB || 10),
+  maxUploadMb: Number(env.MAX_UPLOAD_MB || 4),
   contactEmail: env.CONTACT_EMAIL || '',
   mailFrom: env.MAIL_FROM || 'BLC Nexus <no-reply@blcnexus.local>',
   smtp: {

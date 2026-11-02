@@ -148,6 +148,11 @@ export default function adminRoutes(ctx) {
     ah(async (req, res) => {
       const target = await prisma.user.findUnique({ where: { id: req.params.id } });
       if (!target) throw new HttpError(404, 'Member not found');
+      if (ctx.identityMode) {
+        // Identity recovery/invitations are sent from the Netlify Identity dashboard.
+        await logAction(ctx, req, 'user.identity-email-required', { userId: target.id });
+        return res.json({ ok: true, identityDashboardRequired: true });
+      }
       if (target.status === 'INVITED') {
         await sendInvite(ctx, target);
       } else {

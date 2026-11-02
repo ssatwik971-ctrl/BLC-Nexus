@@ -19,7 +19,6 @@ export default function Profile() {
   const { data, error, loading, reload } = useFetch('/users/me');
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [pw, setPw] = useState({ currentPassword: '', newPassword: '' });
 
   useEffect(() => {
     if (data?.user) {
@@ -50,17 +49,7 @@ export default function Profile() {
     }
   };
 
-  const changePassword = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/auth/change-password', pw);
-      toast.success('Password updated');
-      setPw({ currentPassword: '', newPassword: '' });
-      await refresh();
-    } catch (err) {
-      toast.error(errorMessage(err));
-    }
-  };
+
 
   const toggleHidden = (field) =>
     setForm((f) => ({ ...f, hiddenFields: f.hiddenFields.includes(field) ? f.hiddenFields.filter((x) => x !== field) : [...f.hiddenFields, field] }));
@@ -70,11 +59,7 @@ export default function Profile() {
   return (
     <>
       <PageHeader title="My profile" subtitle="Update your details, privacy and notification settings." />
-      {user.mustChangePassword && (
-        <div role="alert" className="mb-6 rounded-lg border border-gold/60 bg-gold/10 p-4 text-sm">
-          <strong>Action required:</strong> you are using a default password. Please set a new one below before continuing.
-        </div>
-      )}
+
       {loading && <SkeletonBlock rows={6} />}
       {error && <ErrorNote error={error} retry={reload} />}
 
@@ -102,12 +87,8 @@ export default function Profile() {
           </Card>
 
           <Card>
-            <h2 className="mb-4 font-display text-lg font-bold">Change password</h2>
-            <form onSubmit={changePassword} className="space-y-4">
-              <Field label="Current password" htmlFor="pw-cur"><input id="pw-cur" type="password" autoComplete="current-password" className="input" required value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} /></Field>
-              <Field label="New password" htmlFor="pw-new" hint="At least 10 characters."><input id="pw-new" type="password" autoComplete="new-password" minLength={10} className="input" required value={pw.newPassword} onChange={(e) => setPw({ ...pw, newPassword: e.target.value })} /></Field>
-              <button type="submit" className="btn-outline">Update password</button>
-            </form>
+            <h2 className="mb-4 font-display text-lg font-bold">Account security</h2>
+            <p className="text-sm text-muted">Passwords are managed by Netlify Identity. To change yours, sign out and use “Forgot password?” on the login page.</p>
           </Card>
         </div>
       )}

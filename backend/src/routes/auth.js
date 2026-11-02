@@ -12,9 +12,14 @@ const DUMMY_HASH = bcrypt.hashSync('blc-nexus-timing-equalizer', 4);
 export default function authRoutes(ctx, auth, limiters) {
   const r = Router();
   const { prisma, config, mailer } = ctx;
+  const identityEnabled = Boolean(ctx.identityMode);
+  const legacyAuthDisabled = (_req, _res, next) => identityEnabled
+    ? next(new HttpError(410, 'Password authentication has moved to Netlify Identity.'))
+    : next();
 
   r.post(
     '/login',
+    legacyAuthDisabled,
     limiters.login,
     ah(async (req, res) => {
       const { email, password: pw } = parse(
@@ -32,6 +37,7 @@ export default function authRoutes(ctx, auth, limiters) {
 
   r.post(
     '/accept-invite',
+    legacyAuthDisabled,
     limiters.login,
     ah(async (req, res) => {
       const { token, password: pw } = parse(z.object({ token: z.string().min(10).max(200), password }), req.body);
@@ -55,6 +61,7 @@ export default function authRoutes(ctx, auth, limiters) {
 
   r.post(
     '/forgot-password',
+    legacyAuthDisabled,
     limiters.login,
     ah(async (req, res) => {
       const { email } = parse(z.object({ email: z.string().email().max(254) }), req.body);
@@ -74,6 +81,7 @@ export default function authRoutes(ctx, auth, limiters) {
 
   r.post(
     '/reset-password',
+    legacyAuthDisabled,
     limiters.login,
     ah(async (req, res) => {
       const { token, password: pw } = parse(z.object({ token: z.string().min(10).max(200), password }), req.body);
@@ -96,8 +104,27 @@ export default function authRoutes(ctx, auth, limiters) {
 
   r.get('/me', auth.authenticate, (req, res) => res.json({ user: publicUser(req.user) }));
 
+  // Link a verified Netlify Identity subject to an already-approved BLC record.
+  // Linking by email is permitted only when that address is already in the club database.
+  if (identityEnabled) {
+    r.post('/identity/link', async (req, res, next) => {
+      try {
+        const identityId = req.headers['x-blc-verified-identity-id'];
+        const email = String(req.headers['x-blc-verified-identity-email'] || '').toLowerCase();
+        if (!identityId || !email || req.headers['x-blc-verified-identity-confirmed'] !== 'true') throw new HttpError(401, 'Use a confirmed Netlify Identity account first');
+        const target = await prisma.user.findUnique({ where: { email } });
+        const confirmed = req.headers['x-blc-verified-identity-confirmed'] === 'true';
+        if (!target || (target.status !== 'ACTIVE' && !(target.status === 'INVITED' && confirmed))) throw new HttpError(403, 'This email is not linked to an approved BLC Nexus membership');
+        if (target.netlifyIdentityId && target.netlifyIdentityId !== identityId) throw new HttpError(409, 'This membership is already linked to another Identity account');
+        const linked = await prisma.user.update({ where: { id: target.id }, data: { netlifyIdentityId: identityId, status: 'ACTIVE', inviteTokenHash: null, inviteExpires: null, passwordHash: null, mustChangePassword: false } });
+        res.json({ user: publicUser(linked) });
+      } catch (error) { next(error); }
+    });
+  }
+
   r.post(
     '/change-password',
+    legacyAuthDisabled,
     auth.authenticate,
     ah(async (req, res) => {
       const { currentPassword, newPassword } = parse(
@@ -119,6 +146,11 @@ export default function authRoutes(ctx, auth, limiters) {
 
 /** Create an invite token for a user and email it. Shared with admin routes. */
 export async function sendInvite(ctx, user) {
+  if (ctx.identityMode) {
+    // Netlify Identity invitations are sent from Project configuration > Identity > Users.
+    // Do not send the obsolete password-reset/JWT invite email in Identity mode.
+    return null;
+  }
   const token = newToken();
   const updated = await ctx.prisma.user.update({
     where: { id: user.id },

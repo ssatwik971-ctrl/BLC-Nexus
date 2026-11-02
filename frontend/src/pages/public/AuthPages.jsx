@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import toast from 'react-hot-toast';
 import { Card, ErrorNote, Field } from '../../components/ui.jsx';
 import Logo from '../../components/Logo.jsx';
-import { api, errorMessage } from '../../lib/api.js';
+import { errorMessage } from '../../lib/api.js';
 import { useAuth } from '../../lib/auth.jsx';
 import { useTitle } from '../../lib/hooks.js';
 
@@ -63,13 +63,14 @@ export function ForgotPassword() {
   useTitle('Forgot password');
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const { requestPasswordRecovery } = useAuth();
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
     try {
-      await api.post('/auth/forgot-password', { email });
+      await requestPasswordRecovery(email);
       setSent(true);
     } catch (err) {
       toast.error(errorMessage(err));
@@ -92,34 +93,32 @@ export function ForgotPassword() {
   );
 }
 
-/** Shared screen for "activate invited account" and "reset password". */
+/** Netlify Identity invitation acceptance and password recovery screen. */
 export function SetPassword({ mode }) {
+  const { acceptInvite, finishRecovery } = useAuth();
   const [params] = useSearchParams();
-  const token = params.get('token') || '';
-  const { acceptInvite } = useAuth();
+  const inviteToken = params.get('token') || '';
+  const recoveryReady = params.get('recovery') === '1';
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const invite = mode === 'invite';
+  const ready = invite ? Boolean(inviteToken) : recoveryReady;
   useTitle(invite ? 'Activate account' : 'Reset password');
 
   const submit = async (e) => {
     e.preventDefault();
-    if (password !== confirm) return setError({ message: 'Passwords do not match' });
+    if (password.length < 10) return setError({ message: 'Use at least 10 characters.' });
+    if (password !== confirm) return setError({ message: 'Passwords do not match.' });
     setBusy(true);
     setError(null);
     try {
-      if (invite) {
-        await acceptInvite(token, password);
-        toast.success('Welcome to BLC!');
-        navigate('/app', { replace: true });
-      } else {
-        await api.post('/auth/reset-password', { token, password });
-        toast.success('Password updated. Please sign in.');
-        navigate('/login', { replace: true });
-      }
+      if (invite) await acceptInvite(inviteToken, password);
+      else await finishRecovery(password);
+      toast.success(invite ? 'Welcome to BLC Nexus!' : 'Password updated.');
+      navigate(invite ? '/app' : '/login', { replace: true });
     } catch (err) {
       setError({ message: errorMessage(err) });
     } finally {
@@ -127,7 +126,7 @@ export function SetPassword({ mode }) {
     }
   };
 
-  if (!token) return <Shell title="Link problem"><p className="text-sm text-muted">This link is missing its token. Open the link from your email again.</p></Shell>;
+  if (!ready) return <Shell title="Link problem"><p className="text-sm text-muted">Open the latest Netlify Identity invitation or password-recovery email link again. The link must be processed on this site.</p></Shell>;
 
   return (
     <Shell title={invite ? 'Activate your account' : 'Choose a new password'}>

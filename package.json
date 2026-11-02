@@ -1,0 +1,34 @@
+{
+  "name": "blc-nexus",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace frontend",
+    "prebuild": "npm run prisma:generate --workspace backend",
+    "dev": "netlify dev",
+    "db:init": "netlify database init",
+    "db:status": "netlify database status",
+    "db:connect": "netlify database connect",
+    "db:migrations:apply": "netlify database migrations apply",
+    "prisma:generate": "npm run prisma:generate --workspace backend",
+    "db:generate-sql": "npm run db:generate-sql --workspace backend",
+    "test": "npm test --workspace backend"
+  },
+  "dependencies": {
+    "@netlify/database": "^2.0.1",
+    "@netlify/blobs": "^11.1.7",
+    "serverless-http": "^3.2.0",
+    "@netlify/identity": "^2.0.0",
+    "@netlify/aws-lambda-compat": "^2.0.3"
+  },
+  "devDependencies": {
+    "netlify-cli": "^26.0.2"
+  },
+  "engines": {
+    "node": ">=20.12.2"
+  }
+}

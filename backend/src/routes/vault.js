@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { HttpError, ah, parse, text, optionalText, ROLE_RANK, atLeast } from '../utils/http.js';
@@ -12,12 +13,14 @@ export default function vaultRoutes(ctx, auth) {
   const r = Router();
   const { prisma, config } = ctx;
   const admin = auth.requireRole('ADMIN');
-  const upload = makeUpload(config);
+  const upload = makeUpload(config, { memoryStorage: Boolean(ctx.blobStore) });
 
-  const removeFile = (storedName) => {
+  const removeFile = async (storedName) => {
     if (!storedName) return;
     // storedName is server-generated (uuid + ext); basename guards against traversal anyway.
-    fs.promises.unlink(path.join(config.uploadDir, path.basename(storedName))).catch(() => {});
+    if (ctx.blobStore) { await ctx.blobStore.delete(storedName); return; }
+    try { await fs.promises.unlink(path.join(config.uploadDir, path.basename(storedName))); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
   };
 
   // ---------- Documents ----------
@@ -40,6 +43,7 @@ export default function vaultRoutes(ctx, auth) {
     upload.single('file'),
     ah(async (req, res) => {
       const file = req.file;
+      let storedName;
       try {
         if (!file) throw new HttpError(400, 'A file is required');
         const body = parse(
@@ -51,21 +55,28 @@ export default function vaultRoutes(ctx, auth) {
           }),
           req.body,
         );
+        storedName = file.filename || `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`;
+        if (ctx.blobStore) {
+          await ctx.blobStore.set(storedName, file.buffer.buffer.slice(file.buffer.byteOffset, file.buffer.byteOffset + file.buffer.byteLength), { metadata: { originalName: path.basename(file.originalname).slice(0, 200), mimeType: file.mimetype } });
+        }
         const doc = await prisma.document.create({
           data: {
             ...body,
             fileName: path.basename(file.originalname).slice(0, 200),
-            storedName: file.filename,
+            storedName,
             mimeType: file.mimetype,
             size: file.size,
             uploadedById: req.user.id,
           },
         });
         await logAction(ctx, req, 'document.upload', { id: doc.id, title: doc.title });
-        const { storedName, ...safe } = doc;
+        const { storedName: _omit, ...safe } = doc;
         res.status(201).json({ document: safe });
       } catch (err) {
-        if (file) removeFile(file.filename);
+        if (file && storedName) {
+          try { await removeFile(storedName); }
+          catch (cleanupError) { ctx.logger?.warn?.(`document upload cleanup failed: ${cleanupError.message}`); }
+        }
         throw err;
       }
     }),
@@ -77,9 +88,17 @@ export default function vaultRoutes(ctx, auth) {
       const doc = await prisma.document.findUnique({ where: { id: req.params.id } });
       // 404 (not 403) for hidden docs so their existence is not revealed.
       if (!doc || !atLeast(req.user.role, doc.visibleToRole)) throw new HttpError(404, 'Document not found');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      if (ctx.blobStore) {
+        const bytes = await ctx.blobStore.get(doc.storedName, { type: 'arrayBuffer' });
+        if (!bytes) throw new HttpError(404, 'File is missing from storage');
+        res.setHeader('Content-Type', doc.mimeType);
+        res.setHeader('Content-Length', String(bytes.byteLength));
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(doc.fileName)}`);
+        return res.status(200).send(Buffer.from(bytes));
+      }
       const filePath = path.join(config.uploadDir, path.basename(doc.storedName));
       if (!fs.existsSync(filePath)) throw new HttpError(404, 'File is missing from storage');
-      res.setHeader('X-Content-Type-Options', 'nosniff');
       res.download(filePath, doc.fileName);
     }),
   );
@@ -110,7 +129,11 @@ export default function vaultRoutes(ctx, auth) {
       const doc = await prisma.document.findUnique({ where: { id: req.params.id } });
       if (!doc) throw new HttpError(404, 'Document not found');
       await prisma.document.delete({ where: { id: doc.id } });
-      removeFile(doc.storedName);
+      try { await removeFile(doc.storedName); }
+      catch (cleanupError) {
+        // The DB row is already gone, so fail closed and log the orphan for later cleanup.
+        ctx.logger?.error?.(`orphaned document blob ${doc.storedName}: ${cleanupError.message}`);
+      }
       await logAction(ctx, req, 'document.delete', { id: doc.id, title: doc.title });
       res.json({ ok: true });
     }),

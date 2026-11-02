@@ -16,10 +16,10 @@ export const ALLOWED_FILES = {
 };
 
 /** Multer instance storing files under random names with an allowlist. */
-export function makeUpload(config) {
-  fs.mkdirSync(config.uploadDir, { recursive: true });
+export function makeUpload(config, { memoryStorage = false } = {}) {
+  if (!memoryStorage) fs.mkdirSync(config.uploadDir, { recursive: true });
   return multer({
-    storage: multer.diskStorage({
+    storage: memoryStorage ? multer.memoryStorage() : multer.diskStorage({
       destination: (_req, _file, cb) => cb(null, config.uploadDir),
       filename: (_req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
