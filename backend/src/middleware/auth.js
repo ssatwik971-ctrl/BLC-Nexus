@@ -8,8 +8,18 @@ import { HttpError, ah, ROLE_RANK } from '../utils/http.js';
  */
 export function makeAuth(ctx) {
   const { prisma, config } = ctx;
+  const identityMode = Boolean(ctx.identityMode);
 
   async function loadUser(req) {
+    if (identityMode) {
+      // This header is injected by the Netlify Function only after getUser()
+      // verifies the signed Identity cookie. Client-supplied values are overwritten.
+      const identityId = req.headers['x-blc-verified-identity-id'];
+      if (typeof identityId !== 'string' || !identityId) return null;
+      const identityUser = await prisma.user.findUnique({ where: { netlifyIdentityId: identityId } });
+      if (!identityUser || identityUser.status !== 'ACTIVE') return null;
+      return identityUser;
+    }
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
     if (!token) return null;

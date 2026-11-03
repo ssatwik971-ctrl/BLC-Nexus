@@ -13,9 +13,9 @@ BLC Nexus is the companion website for **BILLIONAIRES CLUB (BLC)**, a cooperativ
 | Frontend | React 18 + Vite, Tailwind CSS, React Router, Recharts, react-hot-toast |
 | Backend | Node.js (ESM) + Express 4, zod validation, helmet, express-rate-limit, multer, nodemailer, winston |
 | Database | PostgreSQL via Prisma |
-| Auth | JWT (bearer) + bcrypt (bcryptjs) password hashing, role-based access control |
+| Auth | Netlify Identity sessions + database-backed BLC roles in the Netlify deployment; legacy JWT mode remains for the standalone backend |
 | Tests | Vitest (API integration tests run against an in-memory fake database) |
-| Hosting | Vercel (frontend) + Railway (API + Postgres) — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Hosting | Netlify Functions + Netlify Database + Netlify Blobs (migration target); standalone deployment guide remains available |
 
 ## Repository layout
 
@@ -111,7 +111,7 @@ Honest notes on what this version does **not** do, so nothing surprises you:
 - **No Ticarium API integration.** There is no known public API, so power, rank and leaderboards are entered manually by admins (as the spec allows).
 - **No committed SQL migrations.** `prisma db push` creates the schema; run `npx prisma migrate dev --name init` once to generate versioned migrations (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 - **MFA is not implemented** (marked optional). Admin accounts should use strong unique passwords.
-- **JWT is kept in `localStorage`** to keep a cross-domain Vercel + Railway deploy simple. This is acceptable because the app never injects raw HTML, but httpOnly cookies are a reasonable hardening step if you host both on one domain.
+- **Netlify Identity is required for the Netlify deployment.** The browser does not persist bearer tokens; Identity manages its session cookies. The standalone legacy backend retains JWT authentication.
 - Tests use an in-memory fake Prisma (no database needed) and cover the critical auth/RBAC/application flows; forums, votes, maintenance and uploads are not yet covered by tests.
 - Uploaded file types are checked by extension and declared MIME type, not by content sniffing or antivirus.
 - Offices are the six named in the brief (HQ, Sidejob, Quality, Energy, Media, R&D); costs and levels are placeholders until an admin edits them.
@@ -121,3 +121,13 @@ Honest notes on what this version does **not** do, so nothing surprises you:
 
 - [API reference](docs/API.md)
 - [Deployment guide](docs/DEPLOYMENT.md)
+
+
+## Netlify migration status
+
+Phase 1 foundation and Phase 2 Netlify Identity integration are available in the migration package. Read `docs/NETLIFY-MIGRATION.md` and `docs/NETLIFY-IDENTITY-PHASE2.md` before deploying. Identity must be enabled and set to Invite only in the Netlify dashboard; invitations are currently issued there manually. This package has not yet passed a dependency install, production build, live database migration, or Deploy Preview authentication test. Keep the existing deployment unchanged until those checks pass.
+
+
+### Netlify migration — final source package
+
+This repository includes the Phase 1 hosting/database foundation, Phase 2 Netlify Identity integration, and Phase 3 private document storage. Read `docs/NETLIFY-MIGRATION.md`, `docs/NETLIFY-IDENTITY-PHASE2.md`, and `docs/NETLIFY-PHASE3-STORAGE-OPERATIONS.md`. The first SQL baseline must be generated from the Prisma schema after dependencies install, then reviewed and applied to a disposable Netlify Database. Netlify Identity invitations are still issued from the Netlify dashboard because the supported Identity admin SDK does not expose a send-invitation operation. This source package has not passed a production build or live Deploy Preview checks; do not cut over from Railway until those checks pass.

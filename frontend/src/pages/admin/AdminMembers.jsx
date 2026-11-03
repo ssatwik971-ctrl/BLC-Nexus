@@ -31,13 +31,13 @@ export default function AdminMembers() {
       await api.post('/admin/users', form);
       setOpen(false);
       setForm({ email: '', inGameName: '', role: 'MEMBER' });
-    }, 'Invite sent');
+    }, 'Member record created. Send the Identity invitation from Netlify → Identity → Users.');
     setBusy(false);
   };
 
   return (
     <>
-      <PageHeader title="Members" subtitle="Manage roles, access and passwords." actions={<button type="button" className="btn-gold" onClick={() => setOpen(true)}>Invite member</button>} />
+      <PageHeader title="Members" subtitle="Manage roles and access. Invitations and password recovery are sent from Netlify Identity." actions={<button type="button" className="btn-gold" onClick={() => setOpen(true)}>Invite member</button>} />
       {loading && <SkeletonBlock rows={6} />}
       {error && <ErrorNote error={error} retry={reload} />}
       {data && (
@@ -69,7 +69,7 @@ export default function AdminMembers() {
                     <td className="td"><Badge value={u.status} /></td>
                     <td className="td text-muted">{fmtDate(u.joinedAt)}</td>
                     <td className="td whitespace-nowrap text-right">
-                      <button type="button" className="btn-ghost px-2 py-1" onClick={() => act(() => api.post(`/admin/users/${u.id}/reset-password`), u.status === 'INVITED' ? 'Invite resent' : 'Reset email sent')}>{u.status === 'INVITED' ? 'Resend invite' : 'Reset password'}</button>
+                      <button type="button" className="btn-ghost px-2 py-1" onClick={() => act(() => api.post(`/admin/users/${u.id}/reset-password`), 'Use Netlify Identity → Users to send an invite or password recovery email.')}>{u.status === 'INVITED' ? 'Identity invite' : 'Identity recovery'}</button>
                       {!self && u.status === 'ACTIVE' && <button type="button" className="btn-outline ml-1 px-2 py-1" onClick={() => act(() => api.patch(`/admin/users/${u.id}`, { status: 'SUSPENDED' }), 'Suspended')}>Suspend</button>}
                       {!self && u.status === 'SUSPENDED' && <button type="button" className="btn-outline ml-1 px-2 py-1" onClick={() => act(() => api.patch(`/admin/users/${u.id}`, { status: 'ACTIVE' }), 'Reactivated')}>Reactivate</button>}
                       {!self && <button type="button" className="btn-danger ml-1 px-2 py-1" onClick={() => window.confirm(`Remove ${u.inGameName}? This deletes their account.`) && act(() => api.del(`/admin/users/${u.id}`), 'Member removed')}>Remove</button>}
@@ -92,7 +92,7 @@ export default function AdminMembers() {
             </Field>
             <div className="flex justify-end gap-2">
               <button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
-              <button type="submit" className="btn-gold" disabled={busy}>{busy ? 'Sending…' : 'Send invite'}</button>
+              <button type="submit" className="btn-gold" disabled={busy}>{busy ? 'Saving…' : 'Create member'}</button>
             </div>
           </form>
         </Modal>

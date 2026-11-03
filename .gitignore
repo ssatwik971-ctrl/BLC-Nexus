@@ -11,3 +11,4 @@ uploads/
 backups/
 coverage/
 .vite/
+.netlify/

@@ -1,29 +1,7 @@
 const BASE = `${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}/api`;
-const TOKEN_KEY = 'blc-nexus-token';
-
-export const tokenStore = {
-  get() {
-    try {
-      return localStorage.getItem(TOKEN_KEY);
-    } catch {
-      return null;
-    }
-  },
-  set(token) {
-    try {
-      localStorage.setItem(TOKEN_KEY, token);
-    } catch {
-      /* storage unavailable */
-    }
-  },
-  clear() {
-    try {
-      localStorage.removeItem(TOKEN_KEY);
-    } catch {
-      /* storage unavailable */
-    }
-  },
-};
+// Netlify Identity manages the secure nf_jwt session cookie. Never persist
+// access tokens in localStorage.
+export const tokenStore = { get: () => null, set: () => {}, clear: () => {} };
 
 export class ApiError extends Error {
   constructor(status, message, details) {
@@ -35,8 +13,6 @@ export class ApiError extends Error {
 
 async function request(method, path, body) {
   const headers = {};
-  const token = tokenStore.get();
-  if (token) headers.Authorization = `Bearer ${token}`;
 
   let payload;
   if (body instanceof FormData) {
@@ -48,7 +24,7 @@ async function request(method, path, body) {
 
   let res;
   try {
-    res = await fetch(BASE + path, { method, headers, body: payload });
+    res = await fetch(BASE + path, { method, headers, body: payload, credentials: 'include' });
   } catch {
     throw new ApiError(0, 'Cannot reach the BLC Nexus server. Check your connection and try again.');
   }
@@ -62,10 +38,7 @@ async function request(method, path, body) {
 
   if (!res.ok) {
     // An expired/invalid session: drop the token and let the app redirect to login.
-    if (res.status === 401 && token) {
-      tokenStore.clear();
-      window.dispatchEvent(new Event('blc-auth-expired'));
-    }
+    if (res.status === 401) window.dispatchEvent(new Event('blc-auth-expired'));
     throw new ApiError(res.status, data?.error || res.statusText || 'Request failed', data?.details);
   }
   return data;
@@ -81,10 +54,7 @@ export const api = {
 
 /** Download a protected file (needs the auth header, so a plain link will not work). */
 export async function downloadFile(path, filename) {
-  const token = tokenStore.get();
-  const res = await fetch(BASE + path.replace(/^\/api/, ''), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  const res = await fetch(BASE + path.replace(/^\/api/, ''), { credentials: 'include' });
   if (!res.ok) throw new ApiError(res.status, 'Download failed');
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
