@@ -21,9 +21,8 @@ export const DEFAULT_SETTINGS = {
       'Officers have the final say on day-to-day operations; big decisions go to a vote.',
     ],
     benefits: [
-      'Cheaper boosts through cooperative donation rewards',
+      'Cash and coin donations tracked openly for the whole club',
       'A shared strategy wiki and active forums',
-      'Event calendar for CEO Races and leaderboard pushes',
       'Transparent governance: member votes on major changes',
     ],
   },

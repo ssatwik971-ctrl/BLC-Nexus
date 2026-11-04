@@ -5,8 +5,8 @@ import { useFetch } from '../lib/hooks.js';
 import { Badge, EmptyState, ErrorNote, Field, Modal, SkeletonBlock, Table } from './ui.jsx';
 
 /**
- * Generic list + create/edit/delete manager used for offices, rewards, events,
- * forum categories and performance snapshots.
+ * Generic list + create/edit/delete manager used for offices, forum categories
+ * and performance snapshots.
  *
  * fields: [{ name, label, type: text|textarea|number|select|datetime|date|checkbox, options?, required?, hint? }]
  * toForm(item)   -> initial form values (default: copy of item)

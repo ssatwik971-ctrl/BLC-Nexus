@@ -6,7 +6,7 @@ import { fmtDate, fmtDateTime, fmtNumber } from '../../lib/format.js';
 
 const quick = [
   ['/app/forums', 'Forums'],
-  ['/app/calendar', 'Calendar'],
+  ['/app/maintenance', 'Maintenance'],
   ['/app/donations', 'Donations'],
   ['/app/documents', 'Document vault'],
 ];
@@ -49,23 +49,6 @@ export default function Dashboard() {
                 </ul>
               )}
               <Link to="/app/maintenance" className="mt-3 inline-block text-sm text-gold underline">Open maintenance tracker</Link>
-            </Card>
-
-            <Card>
-              <h2 className="mb-3 font-display text-lg font-bold">Upcoming events</h2>
-              {data.upcomingEvents.length === 0 ? (
-                <EmptyState>No upcoming events.</EmptyState>
-              ) : (
-                <ul className="divide-y divide-line">
-                  {data.upcomingEvents.map((e) => (
-                    <li key={e.id} className="py-2 text-sm">
-                      <div className="font-semibold">{e.title}</div>
-                      <div className="text-muted">{fmtDateTime(e.startTime)}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Link to="/app/calendar" className="mt-3 inline-block text-sm text-gold underline">Open calendar</Link>
             </Card>
 
             <Card>

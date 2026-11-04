@@ -8,14 +8,22 @@ import { sendInvite } from './auth.js';
 
 const SETTING_KEYS = ['home', 'about', 'stats', 'recruiting'];
 
-/** Admin-only routes. Mounted at /api/admin behind authenticate + requireRole('ADMIN'). */
-export default function adminRoutes(ctx) {
+/**
+ * Management routes, mounted at /api/admin behind authenticate + requireRole('OFFICER').
+ *
+ * Only the admin can approve applications, invite members and make someone an
+ * officer (the admin is the only person with access to the Netlify account that
+ * sends invitations). Officers can do everything else here.
+ */
+export default function adminRoutes(ctx, auth) {
   const r = Router();
   const { prisma, config, mailer } = ctx;
+  const adminOnly = auth.requireRole('ADMIN');
 
   // ---------- Applications ----------
   r.get(
     '/applications',
+    adminOnly,
     ah(async (req, res) => {
       const where = req.query.status ? { status: String(req.query.status).toUpperCase() } : {};
       const apps = await prisma.application.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 });
@@ -25,6 +33,7 @@ export default function adminRoutes(ctx) {
 
   r.patch(
     '/applications/:id',
+    adminOnly,
     ah(async (req, res) => {
       const { status, note } = parse(
         z.object({ status: z.enum(['APPROVED', 'REJECTED', 'WAITLISTED', 'PENDING']), note: optionalText(500) }),
@@ -81,16 +90,18 @@ export default function adminRoutes(ctx) {
 
   r.post(
     '/users',
+    adminOnly,
     ah(async (req, res) => {
       const body = parse(
         z.object({
           email: z.string().email().max(254),
           inGameName: text(40, 2),
           playerId: optionalText(60),
-          role: z.enum(['MEMBER', 'OFFICER', 'ADMIN']).default('MEMBER'),
+          role: z.enum(['MEMBER', 'OFFICER']).default('MEMBER'),
         }),
         req.body,
       );
+      if (body.email.toLowerCase() === config.adminEmail) throw new HttpError(409, 'That email belongs to the admin account');
       const user = await prisma.user.create({
         data: { ...body, email: body.email.toLowerCase(), status: 'INVITED' },
       });
@@ -100,10 +111,14 @@ export default function adminRoutes(ctx) {
     }),
   );
 
-  async function assertNotLastAdmin(target, willStopBeingAdmin) {
-    if (target.role === 'ADMIN' && willStopBeingAdmin) {
-      const admins = await prisma.user.count({ where: { role: 'ADMIN', status: 'ACTIVE' } });
-      if (admins <= 1) throw new HttpError(400, 'BLC Nexus must keep at least one active admin');
+  /**
+   * Who may act on whom: nobody can edit or remove the admin account, and officers
+   * can only manage regular members (not other officers).
+   */
+  function assertCanManage(actor, target) {
+    if (target.role === 'ADMIN') throw new HttpError(403, 'The admin account cannot be changed here');
+    if (actor.role !== 'ADMIN' && target.role !== 'MEMBER') {
+      throw new HttpError(403, 'Only the admin can manage officers');
     }
   }
 
@@ -112,18 +127,19 @@ export default function adminRoutes(ctx) {
     ah(async (req, res) => {
       const body = parse(
         z.object({
-          role: z.enum(['MEMBER', 'OFFICER', 'ADMIN']).optional(),
+          role: z.enum(['MEMBER', 'OFFICER']).optional(),
           status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
           inGameName: text(40, 2).optional(),
         }),
         req.body,
       );
+      if (body.role && req.user.role !== 'ADMIN') {
+        throw new HttpError(403, 'Only the admin can make a member an officer or change a role');
+      }
       const target = await prisma.user.findUnique({ where: { id: req.params.id } });
       if (!target) throw new HttpError(404, 'Member not found');
-      if (target.id === req.user.id && (body.role || body.status === 'SUSPENDED')) {
-        throw new HttpError(400, 'You cannot change your own role or suspend yourself');
-      }
-      await assertNotLastAdmin(target, (body.role && body.role !== 'ADMIN') || body.status === 'SUSPENDED');
+      if (target.id === req.user.id) throw new HttpError(400, 'You cannot change your own account here');
+      assertCanManage(req.user, target);
       const user = await prisma.user.update({ where: { id: target.id }, data: body });
       await logAction(ctx, req, 'user.update', { userId: target.id, changes: body });
       res.json({ user: publicUser(user) });
@@ -136,7 +152,7 @@ export default function adminRoutes(ctx) {
       const target = await prisma.user.findUnique({ where: { id: req.params.id } });
       if (!target) throw new HttpError(404, 'Member not found');
       if (target.id === req.user.id) throw new HttpError(400, 'You cannot remove yourself');
-      await assertNotLastAdmin(target, true);
+      assertCanManage(req.user, target);
       await prisma.user.delete({ where: { id: target.id } });
       await logAction(ctx, req, 'user.delete', { userId: target.id, inGameName: target.inGameName });
       res.json({ ok: true });
@@ -148,6 +164,7 @@ export default function adminRoutes(ctx) {
     ah(async (req, res) => {
       const target = await prisma.user.findUnique({ where: { id: req.params.id } });
       if (!target) throw new HttpError(404, 'Member not found');
+      assertCanManage(req.user, target);
       if (ctx.identityMode) {
         // Identity recovery/invitations are sent from the Netlify Identity dashboard.
         await logAction(ctx, req, 'user.identity-email-required', { userId: target.id });

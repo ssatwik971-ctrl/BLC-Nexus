@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { HttpError, ah, ROLE_RANK } from '../utils/http.js';
+import { loadAdminFromCookie } from '../utils/adminSession.js';
 
 /**
  * Authentication + RBAC middleware factory.
@@ -11,6 +12,15 @@ export function makeAuth(ctx) {
   const identityMode = Boolean(ctx.identityMode);
 
   async function loadUser(req) {
+    // The admin signs in with ADMIN_EMAIL + ADMIN_PIN (see /auth/admin-login).
+    const admin = await loadAdminFromCookie(ctx, req);
+    if (admin) return admin;
+    const user = await loadMemberUser(req);
+    // Nobody can be an ADMIN through Identity or a password: admin = PIN login only.
+    return user && user.role === 'ADMIN' ? null : user;
+  }
+
+  async function loadMemberUser(req) {
     if (identityMode) {
       // This header is injected by the Netlify Function only after getUser()
       // verifies the signed Identity cookie. Client-supplied values are overwritten.

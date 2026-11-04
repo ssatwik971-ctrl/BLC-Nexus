@@ -13,7 +13,6 @@ const memberNav = [
   { to: '/app/roster', label: 'Roster' },
   { to: '/app/maintenance', label: 'Maintenance' },
   { to: '/app/donations', label: 'Donations' },
-  { to: '/app/calendar', label: 'Calendar' },
   { to: '/app/forums', label: 'Forums' },
   { to: '/app/wiki', label: 'Wiki' },
   { to: '/app/votes', label: 'Votes' },
@@ -22,8 +21,7 @@ const memberNav = [
   { to: '/app/profile', label: 'Profile' },
 ];
 
-const adminNav = [
-  { to: '/app/admin/applications', label: 'Applications' },
+const manageNav = [
   { to: '/app/admin/members', label: 'Members' },
   { to: '/app/admin/resources', label: 'Content' },
   { to: '/app/admin/site', label: 'Site & Leaderboard' },
@@ -91,17 +89,15 @@ function Bell() {
 
 export default function MemberLayout() {
   const { user, logout, hasRole } = useAuth();
+  const isAdmin = hasRole('ADMIN');
+  // Officers get the management pages; only the admin also reviews applications.
+  const manageLinks = isAdmin ? [{ to: '/app/admin/applications', label: 'Applications' }, ...manageNav] : manageNav;
   const [sidebar, setSidebar] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   // Close the mobile sidebar after navigating.
   useEffect(() => setSidebar(false), [location.pathname]);
-
-  // Force a password change for accounts created with a default password (seeded admin).
-  useEffect(() => {
-    if (user?.mustChangePassword && location.pathname !== '/app/profile') navigate('/app/profile', { replace: true });
-  }, [user, location.pathname, navigate]);
 
   const item = ({ isActive }) =>
     `block rounded-lg px-3 py-2 text-sm font-semibold transition ${isActive ? 'bg-gold/15 text-gold' : 'text-muted hover:bg-raised hover:text-main'}`;
@@ -129,10 +125,10 @@ export default function MemberLayout() {
             </NavLink>
           ))}
         </nav>
-        {hasRole('ADMIN') && (
-          <nav className="mt-6 space-y-1 border-t border-line pt-4" aria-label="Admin">
-            <p className="label px-3">Admin</p>
-            {adminNav.map((l) => (
+        {hasRole('OFFICER') && (
+          <nav className="mt-6 space-y-1 border-t border-line pt-4" aria-label="Management">
+            <p className="label px-3">{isAdmin ? 'Admin' : 'Management'}</p>
+            {manageLinks.map((l) => (
               <NavLink key={l.to} to={l.to} className={item}>
                 {l.label}
               </NavLink>

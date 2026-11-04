@@ -27,18 +27,13 @@ export default function memberRoutes(ctx) {
       const week = mondayOf(now);
       const nextDue = new Date(week.getTime() + 7 * DAY);
 
-      const [settings, offices, mine, events, votes, unread] = await Promise.all([
+      const [settings, offices, mine, votes, unread] = await Promise.all([
         readSettings(prisma),
         prisma.office.findMany({ orderBy: { sortOrder: 'asc' } }),
         prisma.maintenanceAssignment.findMany({
           where: { userId: req.user.id, weekStart: { gte: week } },
           include: { office: true },
           orderBy: { weekStart: 'asc' },
-        }),
-        prisma.event.findMany({
-          where: { startTime: { gte: now } },
-          orderBy: { startTime: 'asc' },
-          take: 5,
         }),
         prisma.vote.findMany({ where: { status: 'OPEN', endTime: { gt: now } } }),
         prisma.notification.count({ where: { userId: req.user.id, read: false } }),
@@ -61,7 +56,6 @@ export default function memberRoutes(ctx) {
         nextMaintenanceDue: nextDue,
         currentWeek: week,
         myAssignments: mine,
-        upcomingEvents: events,
         pendingVotes,
         unreadNotifications: unread,
       });
@@ -114,13 +108,13 @@ export default function memberRoutes(ctx) {
   r.get(
     '/users/me',
     ah(async (req, res) => {
-      const [pledges, paid, posts] = await Promise.all([
-        prisma.donationPledge.findMany({
+      const [recent, totals, paid, posts] = await Promise.all([
+        prisma.donation.findMany({
           where: { userId: req.user.id },
-          include: { reward: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { donatedAt: 'desc' },
           take: 50,
         }),
+        prisma.donation.groupBy({ by: ['type'], where: { userId: req.user.id }, _sum: { amount: true } }),
         prisma.maintenanceAssignment.findMany({
           where: { userId: req.user.id },
           include: { office: true },
@@ -129,11 +123,13 @@ export default function memberRoutes(ctx) {
         }),
         prisma.forumPost.count({ where: { userId: req.user.id } }),
       ]);
+      const sumOf = (type) => totals.find((t) => t.type === type)?._sum.amount || 0;
       res.json({
         user: publicUser(req.user),
         contributions: {
-          pledges,
-          totalFulfilled: pledges.filter((p) => p.status === 'FULFILLED').reduce((s, p) => s + p.amount, 0),
+          donations: recent,
+          totalCash: sumOf('CASH'),
+          totalCoins: sumOf('COINS'),
           maintenance: paid,
           maintenancePaid: paid.filter((a) => a.status === 'PAID').length,
           forumPosts: posts,

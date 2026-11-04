@@ -10,14 +10,13 @@ import Leaderboard from './pages/public/Leaderboard.jsx';
 import Apply from './pages/public/Apply.jsx';
 import ApplicationStatus from './pages/public/ApplicationStatus.jsx';
 import Contact from './pages/public/Contact.jsx';
-import { Login, ForgotPassword, SetPassword } from './pages/public/AuthPages.jsx';
+import { Login, AdminLogin, ForgotPassword, SetPassword } from './pages/public/AuthPages.jsx';
 import NotFound from './pages/public/NotFound.jsx';
 
 import Dashboard from './pages/member/Dashboard.jsx';
 import Roster from './pages/member/Roster.jsx';
 import Maintenance from './pages/member/Maintenance.jsx';
 import Donations from './pages/member/Donations.jsx';
-import Calendar from './pages/member/Calendar.jsx';
 import { ForumHome, ForumCategory, ForumThread } from './pages/member/Forums.jsx';
 import { WikiList, WikiPage } from './pages/member/Wiki.jsx';
 import Votes from './pages/member/Votes.jsx';
@@ -58,6 +57,7 @@ export default function App() {
         <Route path="/apply/status/:token" element={<ApplicationStatus />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<SetPassword mode="reset" />} />
         <Route path="/accept-invite" element={<SetPassword mode="invite" />} />
@@ -76,7 +76,6 @@ export default function App() {
         <Route path="roster" element={<Roster />} />
         <Route path="maintenance" element={<Maintenance />} />
         <Route path="donations" element={<Donations />} />
-        <Route path="calendar" element={<Calendar />} />
         <Route path="forums" element={<ForumHome />} />
         <Route path="forums/category/:id" element={<ForumCategory />} />
         <Route path="forums/thread/:id" element={<ForumThread />} />
@@ -87,11 +86,12 @@ export default function App() {
         <Route path="performance" element={<Performance />} />
         <Route path="profile" element={<Profile />} />
 
+        {/* Only the admin approves applications; officers handle the rest of the management pages. */}
         <Route path="admin/applications" element={<Protected min="ADMIN"><AdminApplications /></Protected>} />
-        <Route path="admin/members" element={<Protected min="ADMIN"><AdminMembers /></Protected>} />
-        <Route path="admin/resources" element={<Protected min="ADMIN"><AdminResources /></Protected>} />
-        <Route path="admin/site" element={<Protected min="ADMIN"><AdminSite /></Protected>} />
-        <Route path="admin/logs" element={<Protected min="ADMIN"><AdminLogs /></Protected>} />
+        <Route path="admin/members" element={<Protected min="OFFICER"><AdminMembers /></Protected>} />
+        <Route path="admin/resources" element={<Protected min="OFFICER"><AdminResources /></Protected>} />
+        <Route path="admin/site" element={<Protected min="OFFICER"><AdminSite /></Protected>} />
+        <Route path="admin/logs" element={<Protected min="OFFICER"><AdminLogs /></Protected>} />
       </Route>
     </Routes>
   );

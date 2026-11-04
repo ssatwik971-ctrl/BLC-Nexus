@@ -106,7 +106,7 @@ export function Footer() {
           <p className="font-display font-bold gold-text">BLC Nexus — The Command Center of the Billionaires Club</p>
           <p className="mt-2 max-w-md text-xs text-muted">
             BLC Nexus is an unofficial fan companion site for Ticarium: Business Tycoon. It is not affiliated with or endorsed
-            by the game's developers. All costs, donations and rewards are in-game resources tracked manually — no real money
+            by the game's developers. All costs and donations are in-game resources tracked manually — no real money
             is handled here, and "Billionaires Club" is a game cooperative name, not a financial service.
           </p>
         </div>

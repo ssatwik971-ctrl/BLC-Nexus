@@ -46,7 +46,7 @@ mode. Never print or commit the connection string.
 - Do not deploy the generated baseline until reviewed and tested on a preview DB.
 - Do not use `prisma db push` against Netlify Database; use committed SQL migrations.
 - Never commit `.env`, database URLs, SMTP credentials, or JWT secrets.
-- Do not use the sample admin credentials from README on a public deployment.
+- There are no sample admin credentials. Set `ADMIN_EMAIL` and a strong `ADMIN_PIN` (8+ characters) in the Netlify environment variables (scope them to Functions) before using the site.
 
 
 ## Phase 2: Netlify Identity

@@ -19,6 +19,10 @@
 5. Existing member records must be `ACTIVE` or `INVITED` in the database. After an invited user accepts their Netlify invitation and confirms the email, the first API call links the verified Identity subject to the matching email and activates the invited database row.
 6. Test member, officer, admin, suspended, unlinked, wrong-email, expired-session, and logout scenarios on the Deploy Preview.
 
+## Admin account (not Netlify Identity)
+
+The admin does not use Netlify Identity. They unlock the site at `/admin-login` with the `ADMIN_EMAIL` and `ADMIN_PIN` environment variables. The API refuses to authenticate any `ADMIN` database row through Identity, and refuses to link an Identity account to the admin email. Only the admin can approve applications and make members officers, so the Identity invitation step stays with the person who owns the Netlify account.
+
 ## Role mapping and security
 
 BLC Nexus authorization remains database-backed (`MEMBER`, `OFFICER`, `ADMIN`). Do not trust browser-provided role values or Identity metadata for app permissions. The API reads the user row by the verified Identity subject on every protected request, so role changes and suspensions take effect immediately. Netlify Identity `member` role is a coarse platform role only; app authorization remains in PostgreSQL.

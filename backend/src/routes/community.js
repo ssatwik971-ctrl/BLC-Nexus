@@ -4,100 +4,11 @@ import { HttpError, ah, parse, text, optionalText, atLeast } from '../utils/http
 import { parseDate } from '../utils/dates.js';
 import { notify, discordNotify, logAction } from '../utils/notify.js';
 
-const EVENT_TYPES = ['CEO_RACE', 'LEADERBOARD', 'CHALLENGE', 'MEETING', 'OTHER'];
-
-/** Calendar, forums, wiki and voting. */
+/** Forums, wiki and voting. */
 export default function communityRoutes(ctx, auth, limiters) {
   const r = Router();
   const { prisma } = ctx;
   const officer = auth.requireRole('OFFICER');
-  const admin = auth.requireRole('ADMIN');
-
-  // ================= Events =================
-  const eventSchema = z.object({
-    title: text(120, 1),
-    description: optionalText(1500),
-    startTime: z.string().refine((v) => parseDate(v), 'Invalid start time'),
-    endTime: z.string().optional().nullable(),
-    type: z.enum(EVENT_TYPES).default('OTHER'),
-    rsvpEnabled: z.boolean().default(true),
-  });
-  const toEventData = (b) => ({
-    ...b,
-    startTime: parseDate(b.startTime),
-    ...(b.endTime !== undefined ? { endTime: parseDate(b.endTime) } : {}),
-  });
-
-  r.get(
-    '/events',
-    ah(async (req, res) => {
-      const from = parseDate(req.query.from) || new Date(Date.now() - 30 * 86400000);
-      const to = parseDate(req.query.to) || new Date(Date.now() + 120 * 86400000);
-      const events = await prisma.event.findMany({
-        where: { startTime: { gte: from, lte: to } },
-        orderBy: { startTime: 'asc' },
-        include: { rsvps: { select: { userId: true, status: true } } },
-      });
-      res.json({
-        events: events.map(({ rsvps, ...e }) => ({
-          ...e,
-          going: rsvps.filter((x) => x.status === 'GOING').length,
-          maybe: rsvps.filter((x) => x.status === 'MAYBE').length,
-          myRsvp: rsvps.find((x) => x.userId === req.user.id)?.status || null,
-        })),
-      });
-    }),
-  );
-
-  r.post(
-    '/events',
-    officer,
-    ah(async (req, res) => {
-      const body = parse(eventSchema, req.body);
-      const event = await prisma.event.create({ data: { ...toEventData(body), createdById: req.user.id } });
-      await discordNotify(ctx, `📅 New BLC event: **${event.title}** — ${event.startTime.toUTCString()}`);
-      await logAction(ctx, req, 'event.create', { id: event.id });
-      res.status(201).json({ event });
-    }),
-  );
-
-  r.patch(
-    '/events/:id',
-    officer,
-    ah(async (req, res) => {
-      const body = parse(eventSchema.partial(), req.body);
-      const data = { ...body, ...(body.startTime ? { startTime: parseDate(body.startTime) } : {}) };
-      if (body.endTime !== undefined) data.endTime = parseDate(body.endTime);
-      const event = await prisma.event.update({ where: { id: req.params.id }, data });
-      res.json({ event });
-    }),
-  );
-
-  r.delete(
-    '/events/:id',
-    officer,
-    ah(async (req, res) => {
-      await prisma.event.delete({ where: { id: req.params.id } });
-      await logAction(ctx, req, 'event.delete', { id: req.params.id });
-      res.json({ ok: true });
-    }),
-  );
-
-  r.post(
-    '/events/:id/rsvp',
-    ah(async (req, res) => {
-      const { status } = parse(z.object({ status: z.enum(['GOING', 'MAYBE', 'NOT_GOING']) }), req.body);
-      const event = await prisma.event.findUnique({ where: { id: req.params.id } });
-      if (!event) throw new HttpError(404, 'Event not found');
-      if (!event.rsvpEnabled) throw new HttpError(400, 'RSVP is not enabled for this event');
-      await prisma.eventRsvp.upsert({
-        where: { eventId_userId: { eventId: event.id, userId: req.user.id } },
-        update: { status },
-        create: { eventId: event.id, userId: req.user.id, status },
-      });
-      res.json({ ok: true, status });
-    }),
-  );
 
   // ================= Forum =================
   r.get(
@@ -119,7 +30,7 @@ export default function communityRoutes(ctx, auth, limiters) {
 
   r.post(
     '/forum/categories',
-    admin,
+    officer,
     ah(async (req, res) => {
       const category = await prisma.forumCategory.create({ data: parse(categorySchema, req.body) });
       res.status(201).json({ category });
@@ -128,7 +39,7 @@ export default function communityRoutes(ctx, auth, limiters) {
 
   r.patch(
     '/forum/categories/:id',
-    admin,
+    officer,
     ah(async (req, res) => {
       const category = await prisma.forumCategory.update({
         where: { id: req.params.id },
@@ -140,7 +51,7 @@ export default function communityRoutes(ctx, auth, limiters) {
 
   r.delete(
     '/forum/categories/:id',
-    admin,
+    officer,
     ah(async (req, res) => {
       await prisma.forumCategory.delete({ where: { id: req.params.id } });
       await logAction(ctx, req, 'forum.category.delete', { id: req.params.id });
@@ -322,7 +233,7 @@ export default function communityRoutes(ctx, auth, limiters) {
 
   r.delete(
     '/wiki/:slug',
-    admin,
+    officer,
     ah(async (req, res) => {
       await prisma.wikiPage.delete({ where: { slug: req.params.slug } });
       await logAction(ctx, req, 'wiki.delete', { slug: req.params.slug });
@@ -337,7 +248,7 @@ export default function communityRoutes(ctx, auth, limiters) {
     const status = effectiveStatus(vote);
     const records = await prisma.voteRecord.findMany({ where: { voteId: vote.id }, select: { userId: true, optionSelected: true } });
     const options = Array.isArray(vote.options) ? vote.options : [];
-    const showResults = status === 'CLOSED' || user.role === 'ADMIN';
+    const showResults = status === 'CLOSED' || atLeast(user.role, 'OFFICER');
     return {
       id: vote.id,
       title: vote.title,
@@ -359,14 +270,14 @@ export default function communityRoutes(ctx, auth, limiters) {
     '/votes',
     ah(async (req, res) => {
       const votes = await prisma.vote.findMany({ orderBy: { createdAt: 'desc' }, take: 100 });
-      const visible = votes.filter((v) => v.status !== 'DRAFT' || req.user.role === 'ADMIN');
+      const visible = votes.filter((v) => v.status !== 'DRAFT' || req.atLeast(user.role, 'OFFICER'));
       res.json({ votes: await Promise.all(visible.map((v) => describeVote(v, req.user))) });
     }),
   );
 
   r.post(
     '/votes',
-    admin,
+    officer,
     ah(async (req, res) => {
       const body = parse(
         z.object({
@@ -394,7 +305,7 @@ export default function communityRoutes(ctx, auth, limiters) {
 
   r.patch(
     '/votes/:id',
-    admin,
+    officer,
     ah(async (req, res) => {
       const body = parse(
         z.object({

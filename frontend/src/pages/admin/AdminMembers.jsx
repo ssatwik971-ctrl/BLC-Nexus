@@ -8,7 +8,8 @@ import { fmtDate } from '../../lib/format.js';
 
 export default function AdminMembers() {
   useTitle('Members');
-  const { user: me } = useAuth();
+  const { user: me, hasRole } = useAuth();
+  const isAdmin = hasRole('ADMIN');
   const { data, error, loading, reload } = useFetch('/admin/users');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ email: '', inGameName: '', role: 'MEMBER' });
@@ -37,7 +38,13 @@ export default function AdminMembers() {
 
   return (
     <>
-      <PageHeader title="Members" subtitle="Manage roles and access. Invitations and password recovery are sent from Netlify Identity." actions={<button type="button" className="btn-gold" onClick={() => setOpen(true)}>Invite member</button>} />
+      <PageHeader
+        title="Members"
+        subtitle={isAdmin
+          ? 'Make members officers and manage access. Invitations and password recovery are sent from Netlify Identity.'
+          : 'Suspend or remove regular members. Only the admin can make someone an officer or invite new members.'}
+        actions={isAdmin && <button type="button" className="btn-gold" onClick={() => setOpen(true)}>Invite member</button>}
+      />
       {loading && <SkeletonBlock rows={6} />}
       {error && <ErrorNote error={error} retry={reload} />}
       {data && (
@@ -56,23 +63,30 @@ export default function AdminMembers() {
             <tbody>
               {data.users.map((u) => {
                 const self = u.id === me.id;
+                const isAdminRow = u.role === 'ADMIN';
+                // Officers can only manage regular members; nobody can change the admin account.
+                const canManage = !self && !isAdminRow && (isAdmin || u.role === 'MEMBER');
                 return (
                   <tr key={u.id} className="border-b border-line/60">
                     <td className="td font-semibold">{u.inGameName}{self && <span className="text-gold"> (you)</span>}</td>
                     <td className="td text-muted">{u.email}</td>
                     <td className="td">
-                      <label className="sr-only" htmlFor={`role-${u.id}`}>Role for {u.inGameName}</label>
-                      <select id={`role-${u.id}`} className="input w-auto py-1" disabled={self} value={u.role} onChange={(e) => act(() => api.patch(`/admin/users/${u.id}`, { role: e.target.value }), 'Role updated')}>
-                        <option>MEMBER</option><option>OFFICER</option><option>ADMIN</option>
-                      </select>
+                      {isAdmin && !self && !isAdminRow ? (
+                        <>
+                          <label className="sr-only" htmlFor={`role-${u.id}`}>Role for {u.inGameName}</label>
+                          <select id={`role-${u.id}`} className="input w-auto py-1" value={u.role} onChange={(e) => act(() => api.patch(`/admin/users/${u.id}`, { role: e.target.value }), 'Role updated')}>
+                            <option>MEMBER</option><option>OFFICER</option>
+                          </select>
+                        </>
+                      ) : <Badge value={u.role} />}
                     </td>
                     <td className="td"><Badge value={u.status} /></td>
                     <td className="td text-muted">{fmtDate(u.joinedAt)}</td>
                     <td className="td whitespace-nowrap text-right">
-                      <button type="button" className="btn-ghost px-2 py-1" onClick={() => act(() => api.post(`/admin/users/${u.id}/reset-password`), 'Use Netlify Identity → Users to send an invite or password recovery email.')}>{u.status === 'INVITED' ? 'Identity invite' : 'Identity recovery'}</button>
-                      {!self && u.status === 'ACTIVE' && <button type="button" className="btn-outline ml-1 px-2 py-1" onClick={() => act(() => api.patch(`/admin/users/${u.id}`, { status: 'SUSPENDED' }), 'Suspended')}>Suspend</button>}
-                      {!self && u.status === 'SUSPENDED' && <button type="button" className="btn-outline ml-1 px-2 py-1" onClick={() => act(() => api.patch(`/admin/users/${u.id}`, { status: 'ACTIVE' }), 'Reactivated')}>Reactivate</button>}
-                      {!self && <button type="button" className="btn-danger ml-1 px-2 py-1" onClick={() => window.confirm(`Remove ${u.inGameName}? This deletes their account.`) && act(() => api.del(`/admin/users/${u.id}`), 'Member removed')}>Remove</button>}
+                      {canManage && <button type="button" className="btn-ghost px-2 py-1" onClick={() => act(() => api.post(`/admin/users/${u.id}/reset-password`), 'Use Netlify Identity → Users to send an invite or password recovery email.')}>{u.status === 'INVITED' ? 'Identity invite' : 'Identity recovery'}</button>}
+                      {canManage && u.status === 'ACTIVE' && <button type="button" className="btn-outline ml-1 px-2 py-1" onClick={() => act(() => api.patch(`/admin/users/${u.id}`, { status: 'SUSPENDED' }), 'Suspended')}>Suspend</button>}
+                      {canManage && u.status === 'SUSPENDED' && <button type="button" className="btn-outline ml-1 px-2 py-1" onClick={() => act(() => api.patch(`/admin/users/${u.id}`, { status: 'ACTIVE' }), 'Reactivated')}>Reactivate</button>}
+                      {canManage && <button type="button" className="btn-danger ml-1 px-2 py-1" onClick={() => window.confirm(`Remove ${u.inGameName}? This deletes their account.`) && act(() => api.del(`/admin/users/${u.id}`), 'Member removed')}>Remove</button>}
                     </td>
                   </tr>
                 );
@@ -88,7 +102,7 @@ export default function AdminMembers() {
             <Field label="Email" htmlFor="iv-email"><input id="iv-email" type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
             <Field label="In-game name" htmlFor="iv-name"><input id="iv-name" className="input" required minLength={2} maxLength={40} value={form.inGameName} onChange={(e) => setForm({ ...form, inGameName: e.target.value })} /></Field>
             <Field label="Role" htmlFor="iv-role">
-              <select id="iv-role" className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option>MEMBER</option><option>OFFICER</option><option>ADMIN</option></select>
+              <select id="iv-role" className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}><option>MEMBER</option><option>OFFICER</option></select>
             </Field>
             <div className="flex justify-end gap-2">
               <button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Cancel</button>

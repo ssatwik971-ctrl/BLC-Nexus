@@ -35,6 +35,12 @@ export const config = {
     pass: env.SMTP_PASS || '',
   },
   discordWebhookUrl: env.DISCORD_WEBHOOK_URL || '',
+  // The one admin account. Set ADMIN_EMAIL and ADMIN_PIN in the Netlify environment
+  // variables; there is no admin row in the database until that person signs in.
+  adminEmail: (env.ADMIN_EMAIL || '').trim().toLowerCase(),
+  adminPin: env.ADMIN_PIN || '',
+  adminName: env.ADMIN_NAME || 'BLC Admin',
+  adminSessionHours: Number(env.ADMIN_SESSION_HOURS || 12),
   rateLimitDisabled: isTest || env.RATE_LIMIT_DISABLED === 'true',
 };
 

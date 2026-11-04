@@ -56,12 +56,11 @@ export default function About() {
       </section>
 
       <Card>
-        <h2 className="font-display text-lg font-bold text-gold">Maintenance costs &amp; donation rewards</h2>
+        <h2 className="font-display text-lg font-bold text-gold">Maintenance costs &amp; donations</h2>
         <p className="mt-2 text-muted">
           Every office has a weekly maintenance cost in in-game money and/or coins. BLC rotates payers each week so the load is
-          shared and no penalty is ever triggered. Members can also pledge donations toward cooperative rewards — such as extra
-          job energy, quality cards and R&amp;D teams — which cost less than the in-game store. Everything is tracked manually in
-          BLC Nexus; nothing here involves real money.
+          shared and no penalty is ever triggered. Cash and coin donations to the cooperative are recorded by BLC officers and shown
+          in separate cash and coin sections. Everything is tracked manually in BLC Nexus; nothing here involves real money.
         </p>
       </Card>
 

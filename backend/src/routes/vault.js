@@ -12,7 +12,7 @@ import { logAction } from '../utils/notify.js';
 export default function vaultRoutes(ctx, auth) {
   const r = Router();
   const { prisma, config } = ctx;
-  const admin = auth.requireRole('ADMIN');
+  const officer = auth.requireRole('OFFICER');
   const upload = makeUpload(config, { memoryStorage: Boolean(ctx.blobStore) });
 
   const removeFile = async (storedName) => {
@@ -21,6 +21,13 @@ export default function vaultRoutes(ctx, auth) {
     if (ctx.blobStore) { await ctx.blobStore.delete(storedName); return; }
     try { await fs.promises.unlink(path.join(config.uploadDir, path.basename(storedName))); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
+  };
+
+  // Documents marked "admin only" can only be created, changed or removed by the admin.
+  const assertAdminDocs = (user, ...levels) => {
+    if (user.role !== 'ADMIN' && levels.includes('ADMIN')) {
+      throw new HttpError(403, 'Only the admin can manage admin-only documents');
+    }
   };
 
   // ---------- Documents ----------
@@ -39,7 +46,7 @@ export default function vaultRoutes(ctx, auth) {
 
   r.post(
     '/documents',
-    admin,
+    officer,
     upload.single('file'),
     ah(async (req, res) => {
       const file = req.file;
@@ -56,6 +63,7 @@ export default function vaultRoutes(ctx, auth) {
           req.body,
         );
         storedName = file.filename || `${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase()}`;
+        assertAdminDocs(req.user, body.visibleToRole);
         if (ctx.blobStore) {
           await ctx.blobStore.set(storedName, file.buffer.buffer.slice(file.buffer.byteOffset, file.buffer.byteOffset + file.buffer.byteLength), { metadata: { originalName: path.basename(file.originalname).slice(0, 200), mimeType: file.mimetype } });
         }
@@ -105,7 +113,7 @@ export default function vaultRoutes(ctx, auth) {
 
   r.patch(
     '/documents/:id',
-    admin,
+    officer,
     ah(async (req, res) => {
       const body = parse(
         z.object({
@@ -116,6 +124,9 @@ export default function vaultRoutes(ctx, auth) {
         }),
         req.body,
       );
+      const existing = await prisma.document.findUnique({ where: { id: req.params.id } });
+      if (!existing) throw new HttpError(404, 'Document not found');
+      assertAdminDocs(req.user, existing.visibleToRole, body.visibleToRole);
       const { storedName, ...doc } = await prisma.document.update({ where: { id: req.params.id }, data: body });
       await logAction(ctx, req, 'document.update', { id: doc.id });
       res.json({ document: doc });
@@ -124,10 +135,11 @@ export default function vaultRoutes(ctx, auth) {
 
   r.delete(
     '/documents/:id',
-    admin,
+    officer,
     ah(async (req, res) => {
       const doc = await prisma.document.findUnique({ where: { id: req.params.id } });
       if (!doc) throw new HttpError(404, 'Document not found');
+      assertAdminDocs(req.user, doc.visibleToRole);
       await prisma.document.delete({ where: { id: doc.id } });
       try { await removeFile(doc.storedName); }
       catch (cleanupError) {
@@ -149,7 +161,7 @@ export default function vaultRoutes(ctx, auth) {
 
   r.post(
     '/audit/snapshots',
-    admin,
+    officer,
     ah(async (req, res) => {
       const body = parse(
         z.object({
@@ -171,7 +183,7 @@ export default function vaultRoutes(ctx, auth) {
 
   r.delete(
     '/audit/snapshots/:id',
-    admin,
+    officer,
     ah(async (req, res) => {
       await prisma.auditSnapshot.delete({ where: { id: req.params.id } });
       res.json({ ok: true });

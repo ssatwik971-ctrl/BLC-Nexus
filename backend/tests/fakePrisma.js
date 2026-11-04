@@ -74,6 +74,19 @@ function table(defaults = {}) {
       if (i < 0) throw notFound();
       return rows.splice(i, 1)[0];
     },
+    async groupBy({ by, where, _sum, orderBy, take }) {
+      const groups = new Map();
+      for (const row of rows.filter((r) => matches(r, where))) {
+        const key = by.map((k) => row[k]).join('|');
+        if (!groups.has(key)) groups.set(key, { ...Object.fromEntries(by.map((k) => [k, row[k]])), _sum: {} });
+        const g = groups.get(key);
+        for (const field of Object.keys(_sum || {})) g._sum[field] = (g._sum[field] || 0) + (row[field] || 0);
+      }
+      let out = [...groups.values()];
+      const sortField = orderBy?._sum && Object.keys(orderBy._sum)[0];
+      if (sortField) out.sort((a, b) => (orderBy._sum[sortField] === 'desc' ? -1 : 1) * (a._sum[sortField] - b._sum[sortField]));
+      return take ? out.slice(0, take) : out;
+    },
     async deleteMany({ where } = {}) {
       const keep = rows.filter((r) => !matches(r, where));
       const count = rows.length - keep.length;
@@ -93,6 +106,14 @@ export function createFakePrisma() {
     auditLog: table(),
     notification: table({ read: false }),
     leaderboardEntry: table(),
+    donation: table(),
+    adminSession: table(),
+    forumCategory: table({ order: 0 }),
+    document: table({ visibleToRole: 'MEMBER' }),
+    vote: table({ status: 'OPEN', eligibleRole: 'MEMBER' }),
+    voteRecord: table(),
+    maintenanceAssignment: table({ status: 'UNPAID' }),
+    forumPost: table(),
     async $transaction(ops) {
       return Promise.all(ops);
     },

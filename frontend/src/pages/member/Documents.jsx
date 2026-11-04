@@ -11,7 +11,8 @@ const size = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.ma
 export default function Documents() {
   useTitle('Documents');
   const { hasRole } = useAuth();
-  const admin = hasRole('ADMIN');
+  const admin = hasRole('OFFICER'); // officers and the admin manage the vault
+  const isAdmin = hasRole('ADMIN');
   const { data, error, loading, reload } = useFetch('/documents');
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
@@ -105,8 +106,8 @@ export default function Documents() {
               <Field label="Visible to" htmlFor="d-vis">
                 <select id="d-vis" className="input" value={form.visibleToRole} onChange={(e) => setForm({ ...form, visibleToRole: e.target.value })}>
                   <option value="MEMBER">All members</option>
-                  <option value="OFFICER">Officers &amp; admins</option>
-                  <option value="ADMIN">Admins only</option>
+                  <option value="OFFICER">Officers &amp; admin</option>
+                  {isAdmin && <option value="ADMIN">Admin only</option>}
                 </select>
               </Field>
             </div>

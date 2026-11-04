@@ -22,7 +22,7 @@ export function createApp(ctx) {
   const auth = makeAuth(ctx);
   const limiters = makeLimiters(config);
 
-  app.set('trust proxy', 1); // Railway/Render/Vercel sit behind a proxy
+  app.set('trust proxy', 1); // Netlify (and other hosts) sit behind a proxy
   app.disable('x-powered-by');
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'blc-nexus-api' }));
@@ -48,8 +48,8 @@ export function createApp(ctx) {
   app.use('/api/auth', authRoutes(ctx, auth, limiters));
   app.use('/api', publicRoutes(ctx, limiters));
 
-  // ---- Admin only ----
-  app.use('/api/admin', auth.authenticate, auth.requireRole('ADMIN'), adminRoutes(ctx));
+  // ---- Officers and the admin (applications, invites and role changes are admin-only inside) ----
+  app.use('/api/admin', auth.authenticate, auth.requireRole('OFFICER'), adminRoutes(ctx, auth));
 
   // ---- Members and above (RBAC is enforced per route inside each router) ----
   app.use('/api', auth.authenticate, memberRoutes(ctx));

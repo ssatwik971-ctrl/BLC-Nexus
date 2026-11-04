@@ -26,7 +26,7 @@ function Results({ vote }) {
 export default function Votes() {
   useTitle('Votes');
   const { hasRole } = useAuth();
-  const admin = hasRole('ADMIN');
+  const admin = hasRole('OFFICER'); // officers and the admin run votes
   const { data, error, loading, reload } = useFetch('/votes');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', options: 'Yes\nNo', eligibleRole: 'MEMBER', endTime: '' });

@@ -185,7 +185,7 @@ export default function Maintenance() {
             title="Offices"
             endpoint="/offices"
             listKey="offices"
-            canDelete={hasRole('ADMIN')}
+            canDelete
             defaults={{ level: 1, weeklyMoneyCost: 0, weeklyCoinCost: 0, sortOrder: 0 }}
             columns={[
               { key: 'name', label: 'Office' },

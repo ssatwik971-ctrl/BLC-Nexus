@@ -5,12 +5,31 @@ import { api } from './api.js';
 const AuthContext = createContext(null);
 const RANK = { MEMBER: 1, OFFICER: 2, ADMIN: 3 };
 
+// The admin session cookie is HttpOnly, so JavaScript cannot see it. This flag only
+// tells the app whether it is worth asking the server "am I signed in as admin?".
+const ADMIN_HINT = 'blc-admin-hint';
+const hint = {
+  has: () => { try { return localStorage.getItem(ADMIN_HINT) === '1'; } catch { return false; } },
+  set: () => { try { localStorage.setItem(ADMIN_HINT, '1'); } catch { /* ignore */ } },
+  clear: () => { try { localStorage.removeItem(ADMIN_HINT); } catch { /* ignore */ } },
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async ({ throwOnError = false } = {}) => {
     try {
+      if (hint.has()) {
+        // Admin session (email + PIN). Falls through to Netlify Identity if there isn't one.
+        try {
+          const admin = await api.get('/auth/me');
+          if (admin?.user) { setUser(admin.user); return admin.user; }
+        } catch (err) {
+          if (err.status !== 401) throw err;
+          hint.clear();
+        }
+      }
       const identityUser = await getUser();
       if (!identityUser) { setUser(null); return null; }
       let response;
@@ -68,10 +87,23 @@ export function AuthProvider({ children }) {
         throw new Error(error?.message || 'Signed in, but your BLC Nexus account could not be synchronized.');
       }
     },
+    adminLogin: async (email, pin) => {
+      const response = await api.post('/auth/admin-login', { email, pin });
+      hint.set();
+      setUser(response.user);
+      return response.user;
+    },
     acceptInvite: finishInvite,
     finishRecovery,
     requestPasswordRecovery,
-    logout: async () => { await identityLogout(); setUser(null); },
+    logout: async () => {
+      if (hint.has()) {
+        try { await api.post('/auth/admin-logout'); } catch { /* the cookie expires on its own */ }
+        hint.clear();
+      }
+      try { await identityLogout(); } catch { /* no Identity session to end */ }
+      setUser(null);
+    },
     hasRole: (min) => Boolean(user) && RANK[user.role] >= RANK[min],
   }), [user, loading, refresh, finishInvite, finishRecovery]);
 

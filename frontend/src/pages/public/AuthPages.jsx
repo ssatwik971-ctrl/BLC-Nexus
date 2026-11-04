@@ -54,6 +54,49 @@ export function Login() {
           <Link to="/forgot-password" className="text-gold underline">Forgot password?</Link>
           <Link to="/apply" className="text-muted hover:text-gold">Not a member? Apply</Link>
         </div>
+        <p className="border-t border-line pt-3 text-center text-xs text-muted">
+          BLC admin? <Link to="/admin-login" className="text-gold underline">Sign in with your PIN</Link>
+        </p>
+      </form>
+    </Shell>
+  );
+}
+
+/** The admin signs in with the ADMIN_EMAIL and ADMIN_PIN set in the Netlify environment variables. */
+export function AdminLogin() {
+  useTitle('Admin sign-in');
+  const { user, adminLogin } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  if (user) return <Navigate to="/app" replace />;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await adminLogin(email, pin);
+      navigate('/app', { replace: true });
+    } catch (err) {
+      setPin('');
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Shell title="Admin sign-in">
+      <form onSubmit={submit} className="space-y-4">
+        {error && <ErrorNote error={{ message: errorMessage(error) }} />}
+        <Field label="Admin email" htmlFor="a-email"><input id="a-email" type="email" autoComplete="username" className="input" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+        <Field label="PIN" htmlFor="a-pin" hint="The ADMIN_PIN you set in the site's environment variables."><input id="a-pin" type="password" autoComplete="current-password" className="input" required value={pin} onChange={(e) => setPin(e.target.value)} /></Field>
+        <button type="submit" className="btn-gold w-full" disabled={busy}>{busy ? 'Unlocking…' : 'Unlock admin account'}</button>
+        <p className="text-center text-sm"><Link to="/login" className="text-muted hover:text-gold">Member login</Link></p>
       </form>
     </Shell>
   );

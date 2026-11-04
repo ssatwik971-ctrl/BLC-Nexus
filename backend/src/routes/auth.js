@@ -2,8 +2,16 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { HttpError, ah, parse, publicUser } from '../utils/http.js';
-import { newToken, sha256 } from '../utils/security.js';
+import { newToken, sha256, safeEqual } from '../utils/security.js';
 import { inviteEmail, resetEmail } from '../utils/emails.js';
+import { adminConfigured, ensureAdminUser, startAdminSession, endAdminSession } from '../utils/adminSession.js';
+import { logAction } from '../utils/notify.js';
+
+// Failed admin sign-ins are counted in the audit log, so the limit survives
+// serverless cold starts. Per address and (higher) across all addresses.
+const ADMIN_FAIL_WINDOW_MS = 15 * 60 * 1000;
+const ADMIN_FAIL_PER_IP = 5;
+const ADMIN_FAIL_GLOBAL = 20;
 
 const password = z.string().min(10, 'Use at least 10 characters').max(128);
 // Used to keep response time similar whether or not the account exists.
@@ -28,7 +36,7 @@ export default function authRoutes(ctx, auth, limiters) {
       );
       const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
       const ok = await bcrypt.compare(pw, user?.passwordHash || DUMMY_HASH);
-      if (!user || !user.passwordHash || !ok || user.status !== 'ACTIVE') {
+      if (!user || !user.passwordHash || !ok || user.status !== 'ACTIVE' || user.role === 'ADMIN') {
         throw new HttpError(401, 'Invalid email or password');
       }
       res.json({ token: auth.signToken(user), user: publicUser(user) });
@@ -102,6 +110,52 @@ export default function authRoutes(ctx, auth, limiters) {
     }),
   );
 
+  // ---------- Admin sign-in: ADMIN_EMAIL + ADMIN_PIN (Netlify environment variables) ----------
+  r.post(
+    '/admin-login',
+    limiters.login,
+    ah(async (req, res) => {
+      if (!adminConfigured(config)) {
+        throw new HttpError(503, 'Admin sign-in is not set up. Add ADMIN_EMAIL and ADMIN_PIN (at least 6 characters) to the site environment variables.');
+      }
+      const { email, pin } = parse(
+        z.object({ email: z.string().max(254), pin: z.string().min(1).max(128) }),
+        req.body,
+      );
+
+      const since = new Date(Date.now() - ADMIN_FAIL_WINDOW_MS);
+      const [fromIp, overall] = await Promise.all([
+        prisma.auditLog.count({ where: { action: 'admin.login.failed', ip: req.ip || null, createdAt: { gte: since } } }),
+        prisma.auditLog.count({ where: { action: 'admin.login.failed', createdAt: { gte: since } } }),
+      ]);
+      if (fromIp >= ADMIN_FAIL_PER_IP || overall >= ADMIN_FAIL_GLOBAL) {
+        throw new HttpError(429, 'Too many failed admin sign-in attempts. Wait 15 minutes and try again.');
+      }
+
+      // Check both values every time so the response never reveals which one was wrong.
+      const emailOk = safeEqual(email.trim().toLowerCase(), config.adminEmail);
+      const pinOk = safeEqual(pin, config.adminPin);
+      if (!(emailOk && pinOk)) {
+        await logAction(ctx, req, 'admin.login.failed');
+        throw new HttpError(401, 'Invalid email or PIN');
+      }
+
+      const user = await ensureAdminUser(prisma, config);
+      req.user = user;
+      await startAdminSession(ctx, req, res);
+      await logAction(ctx, req, 'admin.login');
+      res.json({ user: publicUser(user) });
+    }),
+  );
+
+  r.post(
+    '/admin-logout',
+    ah(async (req, res) => {
+      await endAdminSession(ctx, req, res);
+      res.json({ ok: true });
+    }),
+  );
+
   r.get('/me', auth.authenticate, (req, res) => res.json({ user: publicUser(req.user) }));
 
   // Link a verified Netlify Identity subject to an already-approved BLC record.
@@ -114,6 +168,7 @@ export default function authRoutes(ctx, auth, limiters) {
         if (!identityId || !email || req.headers['x-blc-verified-identity-confirmed'] !== 'true') throw new HttpError(401, 'Use a confirmed Netlify Identity account first');
         const target = await prisma.user.findUnique({ where: { email } });
         const confirmed = req.headers['x-blc-verified-identity-confirmed'] === 'true';
+        if (target && (target.role === 'ADMIN' || target.email === config.adminEmail)) throw new HttpError(403, 'The admin account signs in with its PIN, not Netlify Identity');
         if (!target || (target.status !== 'ACTIVE' && !(target.status === 'INVITED' && confirmed))) throw new HttpError(403, 'This email is not linked to an approved BLC Nexus membership');
         if (target.netlifyIdentityId && target.netlifyIdentityId !== identityId) throw new HttpError(409, 'This membership is already linked to another Identity account');
         const linked = await prisma.user.update({ where: { id: target.id }, data: { netlifyIdentityId: identityId, status: 'ACTIVE', inviteTokenHash: null, inviteExpires: null, passwordHash: null, mustChangePassword: false } });

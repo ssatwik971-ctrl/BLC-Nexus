@@ -6,8 +6,7 @@ import { fmtNumber } from '../../lib/format.js';
 
 const features = [
   ['Office & maintenance tracker', 'Know exactly who pays which cooperative office each week — with deadlines and reminders.'],
-  ['Donation logistics', 'Pledge resources toward cheaper cooperative rewards and watch the top donors climb.'],
-  ['Events & competitions', 'One calendar for CEO Races, leaderboard pushes and internal challenges, with RSVP.'],
+  ['Cash & coin donations', 'Every cash and coin donation to the cooperative is recorded openly, with a top-donor board for each.'],
   ['Strategy forums & wiki', 'Production chains, market trends and office strategy — shared, searchable, permanent.'],
   ['Transparent governance', 'Members vote on tags, strategy and officer elections. Every decision on the record.'],
   ['Document vault', 'Charter, rules and meeting minutes, with access controlled by role.'],

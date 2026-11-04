@@ -7,7 +7,7 @@ export default function AdminResources() {
   useTitle('Content');
   return (
     <>
-      <PageHeader title="Content management" subtitle="Forum categories and performance snapshots. Offices, rewards, events, votes and documents are managed on their own pages." />
+      <PageHeader title="Content management" subtitle="Forum categories and performance snapshots. Offices, donations, votes and documents are managed on their own pages." />
       <div className="space-y-8">
         <ResourceManager
           title="Forum categories"

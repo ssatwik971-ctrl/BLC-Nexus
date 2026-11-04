@@ -43,11 +43,11 @@ HTTPS is enforced automatically in production (HTTP requests are redirected; Rai
 
 ## 3. First login
 
-Sign in at `/login` with the seeded admin (`admin@blcnexus.local` / `ChangeMe!2026` unless you set `SEED_ADMIN_*`). You are redirected to **Profile** and must change the password before anything else. Then:
+Set `ADMIN_EMAIL` and `ADMIN_PIN` in the environment, redeploy, then open `/admin-login` and unlock the admin account with that email and PIN (see the README). Then:
 
 1. Admin → **Site & Leaderboard**: set headline, stats, rules, recruitment on/off.
 2. Update the six offices (Maintenance page) with your real levels and weekly costs.
-3. Invite your officers (Admin → Members → Invite member) and set roles.
+3. Invite your members (Admin → Members → Invite member) and make your officers officers; only the admin can do this.
 
 ## 4. Migrations
 

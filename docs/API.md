@@ -29,12 +29,14 @@ Applicants have no account; they use a private status token.
 | POST | `/auth/reset-password` | `{ token, password }` |
 | GET | `/auth/me` | Current user |
 | POST | `/auth/change-password` | `{ currentPassword, newPassword }` |
+| POST | `/auth/admin-login` | `{ email, pin }` → sets the `blc_admin` session cookie. Compared with `ADMIN_EMAIL` / `ADMIN_PIN`; `429` after repeated failures, `503` if not configured |
+| POST | `/auth/admin-logout` | Ends the admin session |
 
 ## Member+
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/dashboard` | Stats, offices summary, my assignments, upcoming events, pending votes |
+| GET | `/dashboard` | Stats, offices summary, my assignments, pending votes |
 | GET | `/users?q=` | Roster (respects each member's hidden fields) |
 | GET / PATCH | `/users/me` | Own profile + contribution history / update profile and privacy |
 | GET | `/notifications` | Own notifications |
@@ -43,19 +45,15 @@ Applicants have no account; they use a private status token.
 | GET | `/maintenance?week=YYYY-MM-DD` | Assignments for a week (Monday-normalised) |
 | GET | `/maintenance/history?mine=1` | Past weeks |
 | PATCH | `/maintenance/:id` | Member: own assignment → `PAID` only. Officer: any status/note |
-| GET | `/rewards` | Rewards with pledged/fulfilled totals |
-| GET | `/pledges?mine=1`, `/pledges/leaderboard` | Pledges / top donors |
-| POST | `/pledges` | `{ rewardItemId, amount, note? }` |
-| PATCH | `/pledges/:id` | Member: cancel own pending. Officer: any status |
-| GET | `/events?from=&to=` | Calendar events with RSVP counts |
-| POST | `/events/:id/rsvp` | `{ status: GOING\|MAYBE\|NOT_GOING }` |
+| GET | `/donations?type=cash\|coins` | Donation history, club total and your total for that type |
+| GET | `/donations/leaderboard?type=cash\|coins` | Top donors for that type |
 | GET | `/forum/categories`, `/forum/categories/:id/threads`, `/forum/threads/:id` | Read forums |
 | POST | `/forum/threads` | `{ categoryId, title, content }` — rate limited |
 | POST | `/forum/threads/:id/posts` | `{ content }` — rate limited; blocked on locked threads (except officers) |
 | POST | `/forum/posts/:id/upvote` | Toggle upvote |
 | DELETE | `/forum/threads/:id`, `/forum/posts/:id` | Author or officer+ |
 | GET | `/wiki`, `/wiki/:slug` | Read wiki |
-| GET | `/votes`, `/votes/history/mine` | Votes (results only after close, or for admins) |
+| GET | `/votes`, `/votes/history/mine` | Votes (results only after close, or for officers and the admin) |
 | POST | `/votes/:id/cast` | `{ option }` — one vote per member, eligibility enforced |
 | GET | `/documents` | Only documents visible to your role |
 | GET | `/documents/:id/download` | Role-checked file download |
@@ -70,26 +68,29 @@ Applicants have no account; they use a private status token.
 | POST | `/maintenance/copy-week` | `{ from, to }` copy last week's assignments |
 | POST | `/maintenance/remind` | `{ week? }` in-app + email reminders for unpaid |
 | DELETE | `/maintenance/:id` | Remove assignment |
-| POST / PATCH | `/rewards`, `/rewards/:id` | Manage rewards (incl. `status` AVAILABLE/PURCHASED/CLAIMED) |
-| POST / PATCH / DELETE | `/events`, `/events/:id` | Manage events |
-| PATCH | `/forum/threads/:id` | `{ pinned?, locked?, title? }` moderation |
-| PUT | `/wiki/:slug` | `{ title, content }` create/update page |
-
-## Admin
-
-| Method | Path | Notes |
-|---|---|---|
-| DELETE | `/offices/:id`, `/rewards/:id`, `/wiki/:slug` | Delete content |
+| POST | `/donations` | `{ userId, type: CASH\|COINS, amount, note?, donatedAt? }` — coins must be whole numbers; notifies the member |
+| DELETE | `/donations/:id` | Remove a mistaken entry |
+| DELETE | `/offices/:id`, `/wiki/:slug` | Delete content |
 | POST / PATCH / DELETE | `/forum/categories`, `/forum/categories/:id` | Manage categories |
 | POST / PATCH | `/votes`, `/votes/:id` | Create votes / close early |
-| POST | `/documents` | `multipart/form-data`: `file`, `title`, `description?`, `category?`, `visibleToRole?` |
-| PATCH / DELETE | `/documents/:id` | Edit metadata / delete file |
+| POST | `/documents` | `multipart/form-data`: `file`, `title`, `description?`, `category?`, `visibleToRole?` (`ADMIN` visibility is admin-only) |
+| PATCH / DELETE | `/documents/:id` | Edit metadata / delete file (admin-only documents need the admin) |
 | POST / DELETE | `/audit/snapshots`, `/audit/snapshots/:id` | Record performance snapshots |
-| GET | `/admin/applications?status=` | Review queue |
-| PATCH | `/admin/applications/:id` | `{ status: APPROVED\|REJECTED\|WAITLISTED\|PENDING, note? }` — approving creates the member and emails an invite |
-| GET / POST | `/admin/users` | List all accounts / invite a member directly |
-| PATCH / DELETE | `/admin/users/:id` | Change role/status/name; remove (cannot remove yourself or the last admin) |
+| PATCH | `/forum/threads/:id` | `{ pinned?, locked?, title? }` moderation |
+| PUT | `/wiki/:slug` | `{ title, content }` create/update page |
+| GET | `/admin/users` | List all accounts |
+| PATCH / DELETE | `/admin/users/:id` | Suspend / reactivate / remove **regular members** (officers and the admin account are protected from officers) |
 | POST | `/admin/users/:id/reset-password` | Sends reset email (or resends invite) |
 | PUT | `/admin/settings/:key` | `key` ∈ `home`, `about`, `stats`, `recruiting`; body `{ value }` |
 | PUT | `/admin/leaderboard/:kind` | `kind` ∈ `activity`, `donation`; body `{ entries: [{ name, score }] }` replaces the list |
 | GET | `/admin/logs` | Last 200 admin/officer actions |
+
+## Admin only
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/admin/applications?status=` | Review queue |
+| PATCH | `/admin/applications/:id` | `{ status: APPROVED\|REJECTED\|WAITLISTED\|PENDING, note? }` — approving creates the member and emails an invite |
+| POST | `/admin/users` | Invite a member directly: `{ email, inGameName, playerId?, role: MEMBER\|OFFICER }` |
+| PATCH | `/admin/users/:id` | `{ role: MEMBER\|OFFICER }` — **only the admin can make someone an officer**; the `ADMIN` role cannot be assigned |
+| PATCH / DELETE | `/admin/users/:id` | Manage officers as well as members (never the admin account itself) |

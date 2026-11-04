@@ -88,7 +88,11 @@ export default function Profile() {
 
           <Card>
             <h2 className="mb-4 font-display text-lg font-bold">Account security</h2>
-            <p className="text-sm text-muted">Passwords are managed by Netlify Identity. To change yours, sign out and use “Forgot password?” on the login page.</p>
+            <p className="text-sm text-muted">
+              {user?.role === 'ADMIN'
+                ? 'The admin account signs in with the email and PIN set in the site environment variables. To change the PIN, change ADMIN_PIN in Netlify and redeploy; every old admin session is signed out.'
+                : 'Passwords are managed by Netlify Identity. To change yours, sign out and use “Forgot password?” on the login page.'}
+            </p>
           </Card>
         </div>
       )}
@@ -96,17 +100,18 @@ export default function Profile() {
       {c && (
         <section className="mt-8" aria-labelledby="contrib">
           <h2 id="contrib" className="mb-3 font-display text-lg font-bold">My contributions</h2>
-          <div className="mb-4 grid grid-cols-3 gap-4">
-            <Card><div className="label">Donated</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(c.totalFulfilled)}</div></Card>
+          <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <Card><div className="label">Cash donated</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(c.totalCash)}</div></Card>
+            <Card><div className="label">Coins donated</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(c.totalCoins)}</div></Card>
             <Card><div className="label">Maintenance paid</div><div className="font-display text-2xl font-extrabold gold-text">{c.maintenancePaid}</div></Card>
             <Card><div className="label">Forum posts</div><div className="font-display text-2xl font-extrabold gold-text">{c.forumPosts}</div></Card>
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
-              <h3 className="mb-2 font-semibold">Recent pledges</h3>
-              {c.pledges.length === 0 ? <EmptyState>No pledges yet.</EmptyState> : (
-                <Table><tbody>{c.pledges.slice(0, 8).map((p) => (
-                  <tr key={p.id} className="border-b border-line/60"><td className="td">{p.reward.name}</td><td className="td">{fmtNumber(p.amount)}</td><td className="td"><Badge value={p.status} /></td></tr>
+              <h3 className="mb-2 font-semibold">Recent donations</h3>
+              {c.donations.length === 0 ? <EmptyState>No donations recorded yet.</EmptyState> : (
+                <Table><tbody>{c.donations.slice(0, 8).map((d) => (
+                  <tr key={d.id} className="border-b border-line/60"><td className="td">{d.type === 'CASH' ? 'Cash' : 'Coins'}</td><td className="td">{fmtNumber(d.amount)}</td><td className="td text-muted">{fmtDate(d.donatedAt)}</td></tr>
                 ))}</tbody></Table>
               )}
             </Card>

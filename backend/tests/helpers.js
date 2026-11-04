@@ -3,9 +3,11 @@ import { createApp } from '../src/app.js';
 import { createFakePrisma } from './fakePrisma.js';
 
 export const PASSWORD = 'CorrectHorse!42';
+export const ADMIN_EMAIL = 'owner@gmail.com';
+export const ADMIN_PIN = 'Pin-9482';
 
 /** Start the real Express app on a random port against an in-memory fake DB. */
-export async function startTestServer() {
+export async function startTestServer(overrides = {}) {
   const prisma = createFakePrisma();
   const sent = [];
   const config = {
@@ -26,6 +28,11 @@ export async function startTestServer() {
     smtp: {},
     discordWebhookUrl: '',
     rateLimitDisabled: true,
+    adminEmail: ADMIN_EMAIL,
+    adminPin: ADMIN_PIN,
+    adminName: 'Test Admin',
+    adminSessionHours: 1,
+    ...overrides,
   };
   const mailer = { send: async (mail) => void sent.push(mail) };
   const logger = { info() {}, warn() {}, error() {}, debug() {} };
@@ -36,12 +43,13 @@ export async function startTestServer() {
   });
   const base = `http://127.0.0.1:${server.address().port}`;
 
-  async function request(method, path, { token, body } = {}) {
+  async function request(method, path, { token, cookie, body } = {}) {
     const res = await fetch(base + path, {
       method,
       headers: {
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(cookie ? { Cookie: cookie } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -51,7 +59,7 @@ export async function startTestServer() {
     } catch {
       /* empty body */
     }
-    return { status: res.status, body: json };
+    return { status: res.status, body: json, setCookie: res.headers.get('set-cookie') };
   }
 
   async function createUser(role, name = role.toLowerCase()) {
@@ -71,5 +79,11 @@ export async function startTestServer() {
     return res.body?.token;
   }
 
-  return { prisma, sent, request, createUser, login, close: () => new Promise((r) => server.close(r)) };
+  /** Sign in as the admin with ADMIN_EMAIL + ADMIN_PIN; returns the session cookie to send back. */
+  async function adminLogin(email = ADMIN_EMAIL, pin = ADMIN_PIN) {
+    const res = await request('POST', '/api/auth/admin-login', { body: { email, pin } });
+    return res.setCookie ? res.setCookie.split(';')[0] : null;
+  }
+
+  return { prisma, sent, config, request, adminLogin, createUser, login, close: () => new Promise((r) => server.close(r)) };
 }

@@ -13,10 +13,10 @@ export default function Performance() {
 
   return (
     <>
-      <PageHeader title="Cooperative performance" subtitle="Power, rank and membership over time (snapshots entered by admins)." />
+      <PageHeader title="Cooperative performance" subtitle="Power, rank and membership over time (snapshots entered by officers)." />
       {loading && <SkeletonBlock rows={6} />}
       {error && <ErrorNote error={error} retry={reload} />}
-      {data && rows.length === 0 && <EmptyState>No snapshots recorded yet. Admins can add them under Admin → Content.</EmptyState>}
+      {data && rows.length === 0 && <EmptyState>No snapshots recorded yet. Officers can add them under Management → Content.</EmptyState>}
       {rows.length > 0 && (
         <div className="space-y-6">
           <div className="grid grid-cols-3 gap-4">

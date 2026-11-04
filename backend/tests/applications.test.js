@@ -3,6 +3,7 @@ import { startTestServer, PASSWORD } from './helpers.js';
 
 let t;
 let admin;
+let officer;
 let applicationToken;
 let applicationId;
 
@@ -18,9 +19,10 @@ const application = {
 
 beforeAll(async () => {
   t = await startTestServer();
-  await t.createUser('ADMIN', 'admin');
+  await t.createUser('OFFICER', 'officer');
   await t.createUser('MEMBER', 'member');
-  admin = await t.login('admin@example.com');
+  admin = await t.adminLogin();
+  officer = await t.login('officer@example.com');
 });
 afterAll(() => t.close());
 
@@ -53,11 +55,15 @@ describe('application → approval → account activation', () => {
     expect((await t.request('GET', '/api/applications/status/not-a-real-token')).status).toBe(404);
   });
 
-  it('only admins can review applications', async () => {
+  it('only the admin can review applications (not members, not officers)', async () => {
     const memberToken = await t.login('member@example.com');
     expect((await t.request('GET', '/api/admin/applications')).status).toBe(401);
     expect((await t.request('GET', '/api/admin/applications', { token: memberToken })).status).toBe(403);
-    const list = await t.request('GET', '/api/admin/applications', { token: admin });
+    expect((await t.request('GET', '/api/admin/applications', { token: officer })).status).toBe(403);
+    const attempt = await t.request('PATCH', `/api/admin/applications/${applicationId}`, { token: officer, body: { status: 'APPROVED' } });
+    expect(attempt.status).toBe(403);
+    expect(await t.prisma.user.findUnique({ where: { email: 'rookie@example.com' } })).toBeNull();
+    const list = await t.request('GET', '/api/admin/applications', { cookie: admin });
     expect(list.status).toBe(200);
     expect(list.body.applications[0].tokenHash).toBeUndefined();
   });
@@ -65,7 +71,7 @@ describe('application → approval → account activation', () => {
   let inviteToken;
   it('approving creates an invited member and emails an activation link', async () => {
     const res = await t.request('PATCH', `/api/admin/applications/${applicationId}`, {
-      token: admin,
+      cookie: admin,
       body: { status: 'APPROVED', note: 'Welcome aboard' },
     });
     expect(res.status).toBe(200);
@@ -84,7 +90,7 @@ describe('application → approval → account activation', () => {
 
   it('cannot approve the same application twice', async () => {
     const res = await t.request('PATCH', `/api/admin/applications/${applicationId}`, {
-      token: admin,
+      cookie: admin,
       body: { status: 'APPROVED' },
     });
     expect(res.status).toBe(409);
@@ -116,7 +122,7 @@ describe('application → approval → account activation', () => {
       body: { ...application, inGameName: 'Other Player', playerId: 'P-999', email: 'other@example.com' },
     });
     const res = await t.request('PATCH', `/api/admin/applications/${second.body.id}`, {
-      token: admin,
+      cookie: admin,
       body: { status: 'REJECTED', note: 'Not enough activity yet' },
     });
     expect(res.status).toBe(200);

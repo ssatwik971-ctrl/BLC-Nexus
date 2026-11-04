@@ -7,7 +7,7 @@ export async function notify(ctx, userIds, message, link = null) {
   });
 }
 
-/** Optional Discord webhook (announcements, event reminders). Never throws. */
+/** Optional Discord webhook (announcements and new votes). Never throws. */
 export async function discordNotify(ctx, content) {
   const url = ctx.config.discordWebhookUrl;
   if (!url) return;

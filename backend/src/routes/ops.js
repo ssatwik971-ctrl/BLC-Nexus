@@ -7,12 +7,11 @@ import { maintenanceReminderEmail } from '../utils/emails.js';
 
 const weekParam = (v) => mondayOf(parseDate(v) || new Date());
 
-/** Offices, weekly maintenance, donation rewards and pledges. */
+/** Offices, weekly maintenance and donations. */
 export default function opsRoutes(ctx, auth) {
   const r = Router();
   const { prisma, config, mailer } = ctx;
   const officer = auth.requireRole('OFFICER');
-  const admin = auth.requireRole('ADMIN');
 
   // ---------- Offices ----------
   const officeSchema = z.object({
@@ -55,7 +54,7 @@ export default function opsRoutes(ctx, auth) {
 
   r.delete(
     '/offices/:id',
-    admin,
+    officer,
     ah(async (req, res) => {
       await prisma.office.delete({ where: { id: req.params.id } });
       await logAction(ctx, req, 'office.delete', { id: req.params.id });
@@ -195,87 +194,45 @@ export default function opsRoutes(ctx, auth) {
     }),
   );
 
-  // ---------- Rewards ----------
-  const rewardSchema = z.object({
-    name: text(80, 1),
-    description: optionalText(400),
-    donationCost: z.coerce.number().min(0),
-    currency: text(20, 1).default('coins'),
-    type: text(40, 1).default('general'),
-    status: z.enum(['AVAILABLE', 'PURCHASED', 'CLAIMED']).optional(),
-  });
+  // ---------- Donations (cash and coins are tracked separately) ----------
+  // The game has no pledge step: a member donates in-game and an officer records it here.
+  const donationType = z.enum(['CASH', 'COINS']);
+  const typeParam = (v) => {
+    const t = String(v || '').toUpperCase();
+    if (!['CASH', 'COINS'].includes(t)) throw new HttpError(400, 'type must be cash or coins');
+    return t;
+  };
 
   r.get(
-    '/rewards',
-    ah(async (_req, res) => {
-      const rewards = await prisma.rewardItem.findMany({
-        orderBy: { name: 'asc' },
-        include: { pledges: { where: { status: { in: ['PENDING', 'FULFILLED'] } }, select: { amount: true, status: true } } },
-      });
+    '/donations',
+    ah(async (req, res) => {
+      const type = typeParam(req.query.type);
+      const [donations, all] = await Promise.all([
+        prisma.donation.findMany({
+          where: { type },
+          include: { user: { select: { id: true, inGameName: true } } },
+          orderBy: { donatedAt: 'desc' },
+          take: 200,
+        }),
+        prisma.donation.findMany({ where: { type }, select: { userId: true, amount: true } }),
+      ]);
       res.json({
-        rewards: rewards.map(({ pledges, ...rw }) => ({
-          ...rw,
-          pledged: pledges.reduce((s, p) => s + p.amount, 0),
-          fulfilled: pledges.filter((p) => p.status === 'FULFILLED').reduce((s, p) => s + p.amount, 0),
-        })),
+        type,
+        donations,
+        total: all.reduce((sum, d) => sum + d.amount, 0),
+        mine: all.filter((d) => d.userId === req.user.id).reduce((sum, d) => sum + d.amount, 0),
+        count: all.length,
       });
-    }),
-  );
-
-  r.post(
-    '/rewards',
-    officer,
-    ah(async (req, res) => {
-      const reward = await prisma.rewardItem.create({ data: parse(rewardSchema, req.body) });
-      await logAction(ctx, req, 'reward.create', { id: reward.id });
-      res.status(201).json({ reward });
-    }),
-  );
-
-  r.patch(
-    '/rewards/:id',
-    officer,
-    ah(async (req, res) => {
-      const reward = await prisma.rewardItem.update({
-        where: { id: req.params.id },
-        data: parse(rewardSchema.partial(), req.body),
-      });
-      await logAction(ctx, req, 'reward.update', { id: reward.id });
-      res.json({ reward });
-    }),
-  );
-
-  r.delete(
-    '/rewards/:id',
-    admin,
-    ah(async (req, res) => {
-      await prisma.rewardItem.delete({ where: { id: req.params.id } });
-      await logAction(ctx, req, 'reward.delete', { id: req.params.id });
-      res.json({ ok: true });
-    }),
-  );
-
-  // ---------- Pledges ----------
-  r.get(
-    '/pledges',
-    ah(async (req, res) => {
-      const mine = req.query.mine === '1';
-      const pledges = await prisma.donationPledge.findMany({
-        where: mine ? { userId: req.user.id } : {},
-        include: { reward: { select: { id: true, name: true } }, user: { select: { id: true, inGameName: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 200,
-      });
-      res.json({ pledges });
     }),
   );
 
   r.get(
-    '/pledges/leaderboard',
-    ah(async (_req, res) => {
-      const grouped = await prisma.donationPledge.groupBy({
+    '/donations/leaderboard',
+    ah(async (req, res) => {
+      const type = typeParam(req.query.type);
+      const grouped = await prisma.donation.groupBy({
         by: ['userId'],
-        where: { status: 'FULFILLED' },
+        where: { type },
         _sum: { amount: true },
         orderBy: { _sum: { amount: 'desc' } },
         take: 20,
@@ -283,45 +240,53 @@ export default function opsRoutes(ctx, auth) {
       const users = await prisma.user.findMany({ where: { id: { in: grouped.map((g) => g.userId) } } });
       const names = new Map(users.map((u) => [u.id, u.inGameName]));
       res.json({
+        type,
         leaderboard: grouped.map((g, i) => ({ rank: i + 1, userId: g.userId, name: names.get(g.userId), total: g._sum.amount })),
       });
     }),
   );
 
   r.post(
-    '/pledges',
+    '/donations',
+    officer,
     ah(async (req, res) => {
       const body = parse(
-        z.object({ rewardItemId: z.string().min(1), amount: z.coerce.number().positive(), note: optionalText(200) }),
+        z.object({
+          userId: z.string().min(1),
+          type: donationType,
+          amount: z.coerce.number().positive().max(1e15),
+          note: optionalText(200),
+          donatedAt: z.string().optional().nullable(),
+        }),
         req.body,
       );
-      const reward = await prisma.rewardItem.findUnique({ where: { id: body.rewardItemId } });
-      if (!reward || reward.status !== 'AVAILABLE') throw new HttpError(400, 'That reward is not open for pledges');
-      const pledge = await prisma.donationPledge.create({
-        data: { ...body, userId: req.user.id, status: 'PENDING' },
+      if (body.type === 'COINS' && !Number.isInteger(body.amount)) throw new HttpError(400, 'Coin donations must be whole numbers');
+      const member = await prisma.user.findUnique({ where: { id: body.userId } });
+      if (!member || member.status !== 'ACTIVE') throw new HttpError(404, 'Member not found');
+      const donation = await prisma.donation.create({
+        data: {
+          userId: member.id,
+          type: body.type,
+          amount: body.amount,
+          note: body.note,
+          donatedAt: parseDate(body.donatedAt) || new Date(),
+          recordedById: req.user.id,
+        },
       });
-      res.status(201).json({ pledge });
+      const label = body.type === 'CASH' ? 'cash' : 'coins';
+      await notify(ctx, member.id, `Your ${label} donation of ${body.amount.toLocaleString('en-US')} was recorded. Thank you!`, '/app/donations');
+      await logAction(ctx, req, 'donation.record', { id: donation.id, userId: member.id, type: body.type, amount: body.amount });
+      res.status(201).json({ donation });
     }),
   );
 
-  r.patch(
-    '/pledges/:id',
+  r.delete(
+    '/donations/:id',
+    officer,
     ah(async (req, res) => {
-      const { status } = parse(z.object({ status: z.enum(['PENDING', 'FULFILLED', 'CANCELLED']) }), req.body);
-      const pledge = await prisma.donationPledge.findUnique({ where: { id: req.params.id } });
-      if (!pledge) throw new HttpError(404, 'Pledge not found');
-      const isOfficer = atLeast(req.user.role, 'OFFICER');
-      if (!isOfficer && !(pledge.userId === req.user.id && status === 'CANCELLED' && pledge.status === 'PENDING')) {
-        throw new HttpError(403, 'You can only cancel your own pending pledges');
-      }
-      const updated = await prisma.donationPledge.update({
-        where: { id: pledge.id },
-        data: { status, fulfilledAt: status === 'FULFILLED' ? new Date() : null },
-      });
-      if (isOfficer && status === 'FULFILLED') {
-        await notify(ctx, pledge.userId, 'Your donation pledge was marked as received. Thank you!', '/app/donations');
-      }
-      res.json({ pledge: updated });
+      await prisma.donation.delete({ where: { id: req.params.id } });
+      await logAction(ctx, req, 'donation.delete', { id: req.params.id });
+      res.json({ ok: true });
     }),
   );
 

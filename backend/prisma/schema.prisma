@@ -38,36 +38,15 @@ enum PaymentStatus {
   WAIVED
 }
 
-enum PledgeStatus {
-  PENDING
-  FULFILLED
-  CANCELLED
-}
-
-enum RewardStatus {
-  AVAILABLE
-  PURCHASED
-  CLAIMED
-}
-
-enum EventType {
-  CEO_RACE
-  LEADERBOARD
-  CHALLENGE
-  MEETING
-  OTHER
-}
-
-enum RsvpStatus {
-  GOING
-  MAYBE
-  NOT_GOING
-}
-
 enum VoteStatus {
   DRAFT
   OPEN
   CLOSED
+}
+
+enum DonationType {
+  CASH
+  COINS
 }
 
 enum BoardKind {
@@ -99,8 +78,7 @@ model User {
   updatedAt          DateTime   @updatedAt
 
   assignments   MaintenanceAssignment[]
-  pledges       DonationPledge[]
-  rsvps         EventRsvp[]
+  donations     Donation[]
   threads       ForumThread[]
   posts         ForumPost[]
   upvotes       PostUpvote[]
@@ -162,61 +140,34 @@ model MaintenanceAssignment {
   @@index([weekStart])
 }
 
-model RewardItem {
+// Cash and coin donations to the cooperative. Recorded by officers after the
+// member donates in-game (there is no pledge step in the game).
+model Donation {
   id           String       @id @default(uuid())
-  name         String
-  description  String?
-  donationCost Float
-  currency     String       @default("coins")
-  type         String       @default("general")
-  status       RewardStatus @default(AVAILABLE)
-  createdAt    DateTime     @default(now())
-
-  pledges DonationPledge[]
-}
-
-model DonationPledge {
-  id           String       @id @default(uuid())
-  rewardItemId String
   userId       String
+  type         DonationType
   amount       Float
-  status       PledgeStatus @default(PENDING)
   note         String?
+  donatedAt    DateTime     @default(now())
+  recordedById String?
   createdAt    DateTime     @default(now())
-  fulfilledAt  DateTime?
 
-  reward RewardItem @relation(fields: [rewardItemId], references: [id], onDelete: Cascade)
-  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([type, userId])
+  @@index([donatedAt])
 }
 
-model Event {
-  id          String    @id @default(uuid())
-  title       String
-  description String?
-  startTime   DateTime
-  endTime     DateTime?
-  type        EventType @default(OTHER)
-  rsvpEnabled Boolean   @default(true)
-  createdById String?
-  createdAt   DateTime  @default(now())
+// Server-side sessions for the single admin (signed in with ADMIN_EMAIL + ADMIN_PIN).
+// Only a SHA-256 hash of the random session token is stored.
+model AdminSession {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  pinCheck  String // sha256(token + PIN): changing ADMIN_PIN signs every old session out
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
-  rsvps EventRsvp[]
-
-  @@index([startTime])
-}
-
-model EventRsvp {
-  id      String     @id @default(uuid())
-  eventId String
-  userId  String
-  status  RsvpStatus @default(GOING)
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
+  @@index([expiresAt])
 }
 
 model ForumCategory {

@@ -15,7 +15,7 @@ export function ForumHome() {
       <PageHeader title="Strategy forums" subtitle="Production chains, market trends, office strategy and general chat." />
       {loading && <SkeletonBlock rows={4} />}
       {error && <ErrorNote error={error} retry={reload} />}
-      {data && data.categories.length === 0 && <EmptyState>No categories yet. An admin can create them under Admin → Content.</EmptyState>}
+      {data && data.categories.length === 0 && <EmptyState>No categories yet. An officer can create them under Management → Content.</EmptyState>}
       <div className="grid gap-4 sm:grid-cols-2">
         {(data?.categories || []).map((c) => (
           <Link key={c.id} to={`/app/forums/category/${c.id}`} className="card block transition hover:border-gold/60">

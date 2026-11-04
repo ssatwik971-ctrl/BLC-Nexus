@@ -109,7 +109,7 @@ export function WikiPage() {
               actions={officer && (
                 <>
                   <button type="button" className="btn-outline" onClick={startEdit}>Edit</button>
-                  {hasRole('ADMIN') && (
+                  {officer && (
                     <button type="button" className="btn-danger" onClick={async () => {
                       if (!window.confirm('Delete this page?')) return;
                       try { await api.del(`/wiki/${slug}`); navigate('/app/wiki'); } catch (err) { toast.error(errorMessage(err)); }
