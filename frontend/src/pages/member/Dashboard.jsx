@@ -26,7 +26,7 @@ export default function Dashboard() {
         subtitle={`You are signed in as ${user.role.charAt(0) + user.role.slice(1).toLowerCase()}.`}
       />
       {totals.data?.promptWeek && (
-        <div role="status" className="mb-4 rounded-lg border border-gold/50 bg-gold/10 p-3 text-sm">
+        <div role="status" className="mb-4 rounded-xl border border-gold/50 bg-gold/10 p-3 text-sm backdrop-blur">
           Enter the total maintenance cash and coins for the week of {fmtDate(totals.data.promptWeek)}.{' '}
           <Link to="/app/maintenance" className="text-gold underline">Open maintenance</Link>
         </div>
@@ -36,15 +36,15 @@ export default function Dashboard() {
       {data && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Card><div className="label">Cooperative power</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(data.stats?.power)}</div></Card>
-            <Card><div className="label">Weekly money cost</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(data.offices.totalWeeklyMoneyCost)}</div></Card>
-            <Card><div className="label">Weekly coin cost</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(data.offices.totalWeeklyCoinCost)}</div></Card>
-            <Card><div className="label">This week ends</div><div className="font-display text-xl font-extrabold gold-text">{fmtDate(data.nextMaintenanceDue)}</div></Card>
+            <Card className="card-lift"><div className="label">Cooperative power</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(data.stats?.power)}</div></Card>
+            <Card className="card-lift"><div className="label">Weekly money cost</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(data.offices.totalWeeklyMoneyCost)}</div></Card>
+            <Card className="card-lift"><div className="label">Weekly coin cost</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(data.offices.totalWeeklyCoinCost)}</div></Card>
+            <Card className="card-lift"><div className="label">This week ends</div><div className="font-display text-xl font-bold gold-text">{fmtDate(data.nextMaintenanceDue)}</div></Card>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
-              <h2 className="mb-3 font-display text-lg font-bold">My weekly donation</h2>
+              <h2 className="mb-3 font-display text-lg font-bold tracking-wide text-gold-soft tracking-wide text-gold-soft">My weekly donation</h2>
               <p className="text-sm">
                 This week: <Badge value={data.myDonationMet ? 'Donated' : 'Not donated'} tone={data.myDonationMet ? 'gold' : 'muted'} />
               </p>
@@ -53,7 +53,7 @@ export default function Dashboard() {
             </Card>
 
             <Card>
-              <h2 className="mb-3 font-display text-lg font-bold">Pending votes</h2>
+              <h2 className="mb-3 font-display text-lg font-bold tracking-wide text-gold-soft tracking-wide text-gold-soft">Pending votes</h2>
               {data.pendingVotes.length === 0 ? (
                 <EmptyState>You have voted on everything open.</EmptyState>
               ) : (
@@ -69,7 +69,7 @@ export default function Dashboard() {
             </Card>
 
             <Card>
-              <h2 className="mb-3 font-display text-lg font-bold">Offices</h2>
+              <h2 className="mb-3 font-display text-lg font-bold tracking-wide text-gold-soft tracking-wide text-gold-soft">Offices</h2>
               <ul className="divide-y divide-line">
                 {data.offices.list.map((o) => (
                   <li key={o.id} className="flex justify-between py-2 text-sm">

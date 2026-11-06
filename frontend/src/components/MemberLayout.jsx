@@ -54,11 +54,11 @@ function Bell() {
       >
         🔔
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 rounded-full bg-gold px-1.5 text-[10px] font-bold text-canvas">{unread}</span>
+          <span className="absolute -right-1 -top-1 rounded-full bg-gradient-to-br from-gold-soft to-gold-deep px-1.5 text-[10px] font-bold text-canvas shadow-glow">{unread}</span>
         )}
       </button>
       {open && (
-        <div className="card absolute right-0 z-50 mt-2 w-80 max-w-[85vw] shadow-gold" role="region" aria-label="Notifications">
+        <div className="card animate-pop-in absolute right-0 z-50 mt-2 w-80 max-w-[85vw] !bg-surface/95 shadow-gold" role="region" aria-label="Notifications">
           <div className="mb-2 flex items-center justify-between">
             <strong className="text-sm">Notifications</strong>
             {unread > 0 && (
@@ -70,7 +70,7 @@ function Bell() {
           {items.length === 0 && <p className="text-sm text-muted">You are all caught up.</p>}
           <ul className="max-h-72 space-y-2 overflow-y-auto">
             {items.map((n) => (
-              <li key={n.id} className={`rounded-lg border p-2 text-sm ${n.read ? 'border-line text-muted' : 'border-gold/50'}`}>
+              <li key={n.id} className={`rounded-lg border p-2 text-sm ${n.read ? 'border-line text-muted' : 'border-gold/50 bg-gold/5'}`}>
                 {n.link ? (
                   <Link to={n.link} onClick={() => setOpen(false)} className="hover:text-gold">
                     {n.message}
@@ -101,7 +101,7 @@ export default function MemberLayout() {
   useEffect(() => setSidebar(false), [location.pathname]);
 
   const item = ({ isActive }) =>
-    `block rounded-lg px-3 py-2 text-sm font-semibold transition ${isActive ? 'bg-gold/15 text-gold' : 'text-muted hover:bg-raised hover:text-main'}`;
+    `nav-link ${isActive ? 'nav-link-active' : ''}`;
 
   return (
     <div className="min-h-screen lg:flex">
@@ -109,16 +109,17 @@ export default function MemberLayout() {
         Skip to content
       </a>
 
-      {sidebar && <div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setSidebar(false)} aria-hidden="true" />}
+      {sidebar && <div className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm lg:hidden" onClick={() => setSidebar(false)} aria-hidden="true" />}
 
       <aside
         id="sidebar"
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform overflow-y-auto border-r border-line bg-surface p-4 transition-transform lg:static lg:translate-x-0 ${sidebar ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform overflow-y-auto border-r border-gold/20 bg-surface/90 p-4 shadow-[8px_0_40px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-transform duration-300 lg:static lg:translate-x-0 ${sidebar ? 'translate-x-0' : '-translate-x-full'}`}
         aria-label="Member navigation"
       >
-        <Link to="/" className="mb-6 flex justify-center" aria-label="BLC Nexus public site">
+        <Link to="/" className="mb-4 flex justify-center" aria-label="BLC Nexus public site">
           <Logo size="md" />
         </Link>
+        <div className="gold-rule mb-5" aria-hidden="true"><span /></div>
         <nav className="space-y-1">
           {memberNav.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end} className={item}>
@@ -127,8 +128,8 @@ export default function MemberLayout() {
           ))}
         </nav>
         {hasRole('OFFICER') && (
-          <nav className="mt-6 space-y-1 border-t border-line pt-4" aria-label="Management">
-            <p className="label px-3">{isAdmin ? 'Admin' : 'Management'}</p>
+          <nav className="mt-6 space-y-1 border-t border-gold/20 pt-4" aria-label="Management">
+            <p className="label px-3 !text-gold">{isAdmin ? 'Admin' : 'Management'}</p>
             {manageLinks.map((l) => (
               <NavLink key={l.to} to={l.to} className={item}>
                 {l.label}
@@ -138,7 +139,7 @@ export default function MemberLayout() {
         )}
         <button
           type="button"
-          className="btn-ghost mt-6 w-full justify-start"
+          className="btn-ghost mt-6 w-full justify-start border border-line/60"
           onClick={() => {
             logout();
             navigate('/');
@@ -149,7 +150,7 @@ export default function MemberLayout() {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-canvas/90 px-4 py-3 backdrop-blur">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-gold/15 bg-canvas/70 px-4 py-3 backdrop-blur-xl">
           <button
             type="button"
             className="btn-ghost lg:hidden"
@@ -167,7 +168,7 @@ export default function MemberLayout() {
             <Bell />
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-6xl p-4 sm:p-6">
+        <main id="main" className="animate-fade-in mx-auto max-w-6xl p-4 sm:p-8">
           <Outlet />
         </main>
       </div>

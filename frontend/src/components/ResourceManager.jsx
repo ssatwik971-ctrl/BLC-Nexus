@@ -72,7 +72,7 @@ export default function ResourceManager({
   return (
     <section className="card" aria-label={title}>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h2 className="font-display text-lg font-bold">{title}</h2>
+        <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft">{title}</h2>
         <button type="button" className="btn-gold" onClick={() => open(null)}>
           + Add
         </button>

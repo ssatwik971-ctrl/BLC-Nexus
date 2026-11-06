@@ -98,21 +98,21 @@ function DonationSection({ type, officer, members }) {
       {list.error && <ErrorNote error={list.error} retry={reload} />}
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Card>
+        <Card className="card-lift">
           <div className="label">Coop&apos;s total balance</div>
-          <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.balance) : '—'}</div>
+          <div className="font-display text-2xl font-bold gold-text">{list.data ? fmtNumber(list.data.balance) : '—'}</div>
         </Card>
-        <Card>
+        <Card className="card-lift">
           <div className="label">Total donated</div>
-          <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.total) : '—'}</div>
+          <div className="font-display text-2xl font-bold gold-text">{list.data ? fmtNumber(list.data.total) : '—'}</div>
         </Card>
-        <Card>
+        <Card className="card-lift">
           <div className="label">Paid for maintenance</div>
-          <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.spent) : '—'}</div>
+          <div className="font-display text-2xl font-bold gold-text">{list.data ? fmtNumber(list.data.spent) : '—'}</div>
         </Card>
-        <Card>
+        <Card className="card-lift">
           <div className="label">My total</div>
-          <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.mine) : '—'}</div>
+          <div className="font-display text-2xl font-bold gold-text">{list.data ? fmtNumber(list.data.mine) : '—'}</div>
         </Card>
       </div>
 

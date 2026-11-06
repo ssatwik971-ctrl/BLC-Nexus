@@ -31,14 +31,14 @@ export default function PublicLayout() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const linkClass = ({ isActive }) =>
-    `rounded-lg px-3 py-2 text-sm font-semibold transition ${isActive ? 'text-gold' : 'text-muted hover:text-main'}`;
+    `relative rounded-lg px-3 py-2 text-sm font-semibold tracking-wide transition duration-200 after:absolute after:inset-x-3 after:-bottom-0.5 after:h-px after:origin-left after:bg-gold after:transition-transform ${isActive ? 'text-gold after:scale-x-100' : 'text-muted after:scale-x-0 hover:text-main hover:after:scale-x-100'}`;
 
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-gold focus:px-3 focus:py-2 focus:text-canvas">
         Skip to content
       </a>
-      <header className="sticky top-0 z-40 border-b border-line bg-canvas/90 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-gold/20 bg-canvas/70 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3" aria-label="Main">
           <Link to="/" aria-label="BLC Nexus home">
             <Logo size="sm" />
@@ -62,7 +62,7 @@ export default function PublicLayout() {
           </div>
           <button
             type="button"
-            className="btn-ghost md:hidden"
+            className="btn-outline md:hidden"
             aria-expanded={open}
             aria-controls="mobile-menu"
             onClick={() => setOpen(!open)}
@@ -71,7 +71,7 @@ export default function PublicLayout() {
           </button>
         </nav>
         {open && (
-          <div id="mobile-menu" className="border-t border-line px-4 pb-4 md:hidden" key={location.pathname}>
+          <div id="mobile-menu" className="animate-fade-in border-t border-gold/20 bg-canvas/95 px-4 pb-4 md:hidden" key={location.pathname}>
             <div className="flex flex-col gap-1 pt-2">
               {links.map((l) => (
                 <NavLink key={l.to} to={l.to} end={l.end} className={linkClass} onClick={() => setOpen(false)}>
@@ -100,7 +100,8 @@ export default function PublicLayout() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-line bg-surface/50">
+    <footer className="relative border-t border-gold/25 bg-surface/60 backdrop-blur-md">
+      <div className="gold-rule mx-auto max-w-6xl px-4 pt-6" aria-hidden="true"><span /></div>
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 text-sm sm:grid-cols-2">
         <div>
           <p className="font-display font-bold gold-text">BLC Nexus — The Command Center of the Billionaires Club</p>

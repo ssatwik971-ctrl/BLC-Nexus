@@ -9,10 +9,11 @@ export const Card = ({ className = '', children, ...rest }) => (
 
 export function PageHeader({ title, subtitle, actions }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="animate-fade-up mb-7 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="font-display text-2xl font-extrabold sm:text-3xl">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+        <h1 className="font-display text-2xl font-bold tracking-wide sm:text-3xl">{title}</h1>
+        <div className="gold-rule mt-3 max-w-[11rem]" aria-hidden="true"><span /></div>
+        {subtitle && <p className="mt-3 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
@@ -20,7 +21,7 @@ export function PageHeader({ title, subtitle, actions }) {
 }
 
 export const Skeleton = ({ className = 'h-5 w-full' }) => (
-  <div className={`animate-pulse rounded bg-raised ${className}`} aria-hidden="true" />
+  <div className={`animate-pulse rounded bg-raised/80 ${className}`} aria-hidden="true" />
 );
 
 export function SkeletonBlock({ rows = 4 }) {
@@ -34,7 +35,7 @@ export function SkeletonBlock({ rows = 4 }) {
 }
 
 export const ErrorNote = ({ error, retry }) => (
-  <div role="alert" className="rounded-lg border border-danger/50 bg-danger/10 p-4 text-sm text-danger">
+  <div role="alert" className="rounded-xl border border-danger/50 bg-danger/10 p-4 text-sm text-danger backdrop-blur">
     {error?.message || 'Something went wrong.'}{' '}
     {retry && (
       <button type="button" className="underline" onClick={retry}>
@@ -45,14 +46,14 @@ export const ErrorNote = ({ error, retry }) => (
 );
 
 export const EmptyState = ({ children }) => (
-  <div className="rounded-lg border border-dashed border-line p-8 text-center text-sm text-muted">{children}</div>
+  <div className="rounded-xl border border-dashed border-gold/25 bg-canvas/30 p-8 text-center text-sm text-muted">{children}</div>
 );
 
 const TONES = {
-  gold: 'border-gold/50 text-gold',
-  ok: 'border-ok/50 text-ok',
-  danger: 'border-danger/50 text-danger',
-  muted: 'border-line text-muted',
+  gold: 'border-gold/50 bg-gold/10 text-gold',
+  ok: 'border-ok/50 bg-ok/10 text-ok',
+  danger: 'border-danger/50 bg-danger/10 text-danger',
+  muted: 'border-line bg-raised/40 text-muted',
 };
 const STATUS_TONE = {
   PAID: 'ok', FULFILLED: 'ok', APPROVED: 'ok', ACTIVE: 'ok', GOING: 'ok', OPEN: 'ok', CLAIMED: 'ok', AVAILABLE: 'ok',
@@ -61,7 +62,7 @@ const STATUS_TONE = {
 };
 
 export const Badge = ({ value, tone }) => (
-  <span className={`inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${TONES[tone || STATUS_TONE[value] || 'muted']}`}>
+  <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-wide ${TONES[tone || STATUS_TONE[value] || 'muted']}`}>
     {titleCase(value)}
   </span>
 );
@@ -92,10 +93,10 @@ export function Modal({ title, onClose, children }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="card my-8 w-full max-w-lg shadow-gold">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">{title}</h2>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm animate-fade-in" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="card animate-pop-in my-8 w-full max-w-lg !bg-surface/95 shadow-gold">
+        <div className="mb-5 flex items-center justify-between border-b border-gold/20 pb-3">
+          <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft tracking-wide gold-text">{title}</h2>
           <button type="button" className="btn-ghost px-2 py-1" onClick={onClose} aria-label="Close dialog">
             ✕
           </button>

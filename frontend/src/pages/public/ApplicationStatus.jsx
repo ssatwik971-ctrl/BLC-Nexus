@@ -18,7 +18,7 @@ export default function ApplicationStatus() {
   return (
     <div className="mx-auto max-w-xl px-4 py-10">
       <Card>
-        <h1 className="font-display text-2xl font-extrabold">Application status</h1>
+        <h1 className="font-display text-2xl font-bold tracking-wide">Application status</h1>
         {loading && <div className="mt-4"><SkeletonBlock rows={3} /></div>}
         {error && <div className="mt-4"><ErrorNote error={{ message: error.status === 404 ? 'We could not find an application for this link.' : error.message }} /></div>}
         {data && (

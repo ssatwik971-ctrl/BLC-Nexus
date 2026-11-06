@@ -36,7 +36,7 @@ export default function Apply() {
     return (
       <div className="mx-auto max-w-xl px-4 py-10">
         <Card className="border-gold/50">
-          <h1 className="font-display text-2xl font-extrabold gold-text">Application received</h1>
+          <h1 className="font-display text-2xl font-bold gold-text">Application received</h1>
           <p className="mt-3 text-sm text-muted">
             Keep this private link — it is the only way to check your application status. We also emailed it to you.
           </p>
@@ -60,7 +60,7 @@ export default function Apply() {
     return (
       <div className="mx-auto max-w-xl px-4 py-10">
         <Card>
-          <h1 className="font-display text-2xl font-extrabold">Recruitment is closed</h1>
+          <h1 className="font-display text-2xl font-bold tracking-wide">Recruitment is closed</h1>
           <p className="mt-2 text-sm text-muted">BLC is not accepting applications right now. Check back soon or use the contact page.</p>
         </Card>
       </div>

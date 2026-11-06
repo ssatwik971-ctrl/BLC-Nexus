@@ -66,7 +66,7 @@ export default function Profile() {
       {form && (
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <h2 className="mb-4 font-display text-lg font-bold">Details</h2>
+            <h2 className="mb-4 font-display text-lg font-bold tracking-wide text-gold-soft">Details</h2>
             <form onSubmit={save} className="space-y-4">
               <Field label="In-game name" htmlFor="p-name"><input id="p-name" className="input" required minLength={2} maxLength={40} value={form.inGameName} onChange={(e) => setForm({ ...form, inGameName: e.target.value })} /></Field>
               <Field label="Avatar URL (https)" htmlFor="p-av"><input id="p-av" type="url" className="input" placeholder="https://…" value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} /></Field>
@@ -86,7 +86,7 @@ export default function Profile() {
           </Card>
 
           <Card>
-            <h2 className="mb-4 font-display text-lg font-bold">Account security</h2>
+            <h2 className="mb-4 font-display text-lg font-bold tracking-wide text-gold-soft">Account security</h2>
             <p className="text-sm text-muted">
               {user?.role === 'ADMIN'
                 ? 'The admin account signs in with the email and PIN set in the site environment variables. To change the PIN, change ADMIN_PIN in Netlify and redeploy; every old admin session is signed out.'
@@ -112,10 +112,10 @@ export default function Profile() {
         <section className="mt-8" aria-labelledby="contrib">
           <h2 id="contrib" className="mb-3 font-display text-lg font-bold">My contributions</h2>
           <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Card><div className="label">Cash donated</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(c.totalCash)}</div></Card>
-            <Card><div className="label">Coins donated</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(c.totalCoins)}</div></Card>
-            <Card><div className="label">Weeks donated</div><div className="font-display text-2xl font-extrabold gold-text">{c.weeksDonated}</div></Card>
-            <Card><div className="label">Forum posts</div><div className="font-display text-2xl font-extrabold gold-text">{c.forumPosts}</div></Card>
+            <Card className="card-lift"><div className="label">Cash donated</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(c.totalCash)}</div></Card>
+            <Card className="card-lift"><div className="label">Coins donated</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(c.totalCoins)}</div></Card>
+            <Card className="card-lift"><div className="label">Weeks donated</div><div className="font-display text-2xl font-bold gold-text">{c.weeksDonated}</div></Card>
+            <Card className="card-lift"><div className="label">Forum posts</div><div className="font-display text-2xl font-bold gold-text">{c.forumPosts}</div></Card>
           </div>
           <div className="grid gap-6">
             <Card>

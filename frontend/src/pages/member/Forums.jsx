@@ -19,7 +19,7 @@ export function ForumHome() {
       <div className="grid gap-4 sm:grid-cols-2">
         {(data?.categories || []).map((c) => (
           <Link key={c.id} to={`/app/forums/category/${c.id}`} className="card block transition hover:border-gold/60">
-            <h2 className="font-display text-lg font-bold text-gold">{c.name}</h2>
+            <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft text-gold">{c.name}</h2>
             <p className="mt-1 text-sm text-muted">{c.description}</p>
             <p className="mt-3 text-xs text-muted">{c._count.threads} thread{c._count.threads === 1 ? '' : 's'}</p>
           </Link>

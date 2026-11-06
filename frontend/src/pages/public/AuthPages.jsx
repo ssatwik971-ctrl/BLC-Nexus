@@ -10,8 +10,9 @@ import { useTitle } from '../../lib/hooks.js';
 const Shell = ({ title, children }) => (
   <div className="mx-auto flex max-w-md flex-col items-center px-4 py-10">
     <Logo size="md" />
-    <Card className="mt-6 w-full">
-      <h1 className="mb-4 font-display text-2xl font-extrabold">{title}</h1>
+    <Card className="animate-fade-up mt-6 w-full !p-6 shadow-gold sm:!p-8">
+      <h1 className="mb-1 font-display text-2xl font-bold tracking-wide gold-text">{title}</h1>
+      <div className="gold-rule mb-5 max-w-[9rem]" aria-hidden="true"><span /></div>
       {children}
     </Card>
   </div>

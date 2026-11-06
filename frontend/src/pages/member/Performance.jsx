@@ -20,13 +20,13 @@ export default function Performance() {
       {rows.length > 0 && (
         <div className="space-y-6">
           <div className="grid grid-cols-3 gap-4">
-            <Card><div className="label">Latest power</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(latest.power)}</div></Card>
-            <Card><div className="label">Latest rank</div><div className="font-display text-2xl font-extrabold gold-text">{latest.rank ? `#${latest.rank}` : '—'}</div></Card>
-            <Card><div className="label">Members</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(latest.memberCount)}</div></Card>
+            <Card className="card-lift"><div className="label">Latest power</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(latest.power)}</div></Card>
+            <Card className="card-lift"><div className="label">Latest rank</div><div className="font-display text-2xl font-bold gold-text">{latest.rank ? `#${latest.rank}` : '—'}</div></Card>
+            <Card className="card-lift"><div className="label">Members</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(latest.memberCount)}</div></Card>
           </div>
 
           <Card>
-            <h2 className="mb-3 font-display text-lg font-bold">Power over time</h2>
+            <h2 className="mb-3 font-display text-lg font-bold tracking-wide text-gold-soft">Power over time</h2>
             <div className="h-72" role="img" aria-label="Line chart of cooperative power over time">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
@@ -41,7 +41,7 @@ export default function Performance() {
           </Card>
 
           <Card>
-            <h2 className="mb-3 font-display text-lg font-bold">Leaderboard rank &amp; members</h2>
+            <h2 className="mb-3 font-display text-lg font-bold tracking-wide text-gold-soft">Leaderboard rank &amp; members</h2>
             <p className="mb-2 text-xs text-muted">A lower rank number is better.</p>
             <div className="h-64" role="img" aria-label="Line chart of leaderboard rank and member count over time">
               <ResponsiveContainer width="100%" height="100%">

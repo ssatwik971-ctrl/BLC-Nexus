@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import Logo from '../../components/Logo.jsx';
 import { Card, ErrorNote, Skeleton } from '../../components/ui.jsx';
 import { useFetch, useTitle } from '../../lib/hooks.js';
 import { fmtNumber } from '../../lib/format.js';
@@ -14,9 +13,9 @@ const features = [
 
 function Stat({ label, value, loading }) {
   return (
-    <Card className="text-center">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</div>
-      {loading ? <Skeleton className="mx-auto mt-2 h-8 w-24" /> : <div className="mt-1 font-display text-3xl font-extrabold gold-text">{value}</div>}
+    <Card className="card-lift text-center">
+      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">{label}</div>
+      {loading ? <Skeleton className="mx-auto mt-2 h-8 w-24" /> : <div className="mt-2 font-display text-3xl font-bold gold-text">{value}</div>}
     </Card>
   );
 }
@@ -31,16 +30,19 @@ export default function Home() {
 
   return (
     <>
-      <section className="relative overflow-hidden border-b border-line bg-gradient-to-b from-surface to-canvas">
-        <div className="mx-auto flex max-w-4xl flex-col items-center px-4 py-16 text-center sm:py-24">
-          <Logo size="lg" />
-          <h1 className="mt-8 font-display text-3xl font-extrabold sm:text-5xl">
-            BLC Nexus — <span className="gold-text">The Command Center of the Billionaires Club</span>
+      <section className="relative overflow-hidden border-b border-gold/20">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[28rem] w-[46rem] -translate-x-1/2 rounded-full bg-gold/10 blur-3xl" aria-hidden="true" />
+        <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-14 text-center sm:py-24">
+          <div className="plaque animate-fade-up w-56 sm:w-72">
+            <img src="/crest.png" width="640" height="492" alt="Billionaires Club crest: a griffin holding a key on a shield" />
+          </div>
+          <h1 className="animate-fade-up mt-10 font-display text-3xl font-bold leading-tight tracking-wide sm:text-5xl" style={{ animationDelay: '0.1s' }}>
+            BLC Nexus <span className="gold-text shimmer-text block sm:mt-2">The Command Center of the Billionaires Club</span>
           </h1>
-          <p className="mt-5 max-w-2xl text-base text-muted sm:text-lg">
+          <p className="animate-fade-up mt-5 max-w-2xl text-base text-muted sm:text-lg" style={{ animationDelay: '0.2s' }}>
             {settings?.home?.intro || 'A command center for the BILLIONAIRES CLUB (BLC) cooperative in Ticarium: Business Tycoon.'}
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="animate-fade-up mt-9 flex flex-wrap justify-center gap-3" style={{ animationDelay: '0.3s' }}>
             {settings?.recruiting !== false && (
               <Link to="/apply" className="btn-gold px-6 py-3 text-base">
                 Apply to Join
@@ -54,7 +56,7 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-12" aria-labelledby="stats-h">
-        <h2 id="stats-h" className="mb-5 font-display text-xl font-bold">Cooperative at a glance</h2>
+        <h2 id="stats-h" className="mb-5 font-display text-xl font-bold tracking-wide text-gold">Cooperative at a glance</h2>
         {site.error && <ErrorNote error={site.error} retry={site.reload} />}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Members" value={fmtNumber(site.data?.memberCount)} loading={site.loading} />
@@ -67,7 +69,7 @@ export default function Home() {
 
       <section className="mx-auto max-w-6xl px-4 pb-12" aria-labelledby="top-h">
         <div className="mb-5 flex items-end justify-between">
-          <h2 id="top-h" className="font-display text-xl font-bold">Top members</h2>
+          <h2 id="top-h" className="font-display text-xl font-bold tracking-wide text-gold">Top members</h2>
           <Link to="/leaderboard" className="text-sm text-gold underline">Full leaderboard</Link>
         </div>
         <Card>
@@ -85,11 +87,12 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pb-16" aria-labelledby="feat-h">
-        <h2 id="feat-h" className="mb-5 font-display text-xl font-bold">Everything BLC needs in one place</h2>
+        <h2 id="feat-h" className="mb-5 font-display text-xl font-bold tracking-wide text-gold">Everything BLC needs in one place</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map(([title, text]) => (
-            <Card key={title}>
-              <h3 className="font-semibold text-gold">{title}</h3>
+            <Card key={title} className="card-lift">
+              <span className="mb-3 block h-1.5 w-1.5 rotate-45 bg-gold shadow-glow" aria-hidden="true" />
+              <h3 className="font-display font-semibold tracking-wide text-gold-soft">{title}</h3>
               <p className="mt-2 text-sm text-muted">{text}</p>
             </Card>
           ))}

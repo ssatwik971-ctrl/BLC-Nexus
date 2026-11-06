@@ -21,12 +21,12 @@ export default function About() {
       <PageHeader title="About BLC" subtitle="BILLIONAIRES CLUB — a Ticarium: Business Tycoon cooperative" />
 
       <Card>
-        <h2 className="font-display text-lg font-bold text-gold">Our mission</h2>
+        <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft text-gold">Our mission</h2>
         <p className="mt-2 text-muted">{about?.mission || 'Coordinate, compete and climb — together.'}</p>
       </Card>
 
       <Card>
-        <h2 className="font-display text-lg font-bold text-gold">Club rules</h2>
+        <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft text-gold">Club rules</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted">
           {(about?.rules || []).map((r) => (
             <li key={r}>{r}</li>
@@ -35,7 +35,7 @@ export default function About() {
       </Card>
 
       <Card>
-        <h2 className="font-display text-lg font-bold text-gold">Benefits of joining</h2>
+        <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft text-gold">Benefits of joining</h2>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-muted">
           {(about?.benefits || []).map((b) => (
             <li key={b}>{b}</li>
@@ -56,7 +56,7 @@ export default function About() {
       </section>
 
       <Card>
-        <h2 className="font-display text-lg font-bold text-gold">Maintenance costs &amp; donations</h2>
+        <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft text-gold">Maintenance costs &amp; donations</h2>
         <p className="mt-2 text-muted">
           Every office has a weekly maintenance cost in in-game money and/or coins. The admin records the total maintenance paid each
           week and it is deducted from the coop's total balance. Cash and coin donations to the cooperative are recorded by BLC officers and shown
@@ -65,7 +65,7 @@ export default function About() {
       </Card>
 
       <Card className="border-gold/50">
-        <h2 className="font-display text-lg font-bold">Unofficial fan site</h2>
+        <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft">Unofficial fan site</h2>
         <p className="mt-2 text-sm text-muted">
           BLC Nexus is an <strong>unofficial fan companion site</strong> for Ticarium: Business Tycoon. It is not affiliated with
           or endorsed by the game's developers or publisher. "Billionaires Club" is the name of an in-game cooperative and does not

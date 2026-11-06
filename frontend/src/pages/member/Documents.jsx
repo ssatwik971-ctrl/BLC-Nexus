@@ -67,7 +67,7 @@ export default function Documents() {
       <div className="space-y-6">
         {Object.entries(grouped).map(([category, docs]) => (
           <section key={category} aria-label={category}>
-            <h2 className="mb-2 font-display text-lg font-bold text-gold">{category}</h2>
+            <h2 className="mb-2 font-display text-lg font-bold tracking-wide text-gold-soft text-gold">{category}</h2>
             <div className="space-y-2">
               {docs.map((d) => (
                 <Card key={d.id} className="flex flex-wrap items-center justify-between gap-3">

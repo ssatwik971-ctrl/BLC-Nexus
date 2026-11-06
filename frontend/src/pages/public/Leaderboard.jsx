@@ -5,7 +5,7 @@ import { fmtNumber } from '../../lib/format.js';
 function Board({ title, entries, scoreLabel }) {
   return (
     <Card>
-      <h2 className="mb-3 font-display text-lg font-bold text-gold">{title}</h2>
+      <h2 className="mb-3 font-display text-lg font-bold tracking-wide text-gold-soft text-gold">{title}</h2>
       {entries.length === 0 ? (
         <EmptyState>No entries published yet.</EmptyState>
       ) : (
