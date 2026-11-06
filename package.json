@@ -20,12 +20,15 @@
   },
   "dependencies": {
     "@netlify/database": "^2.0.1",
-    "@netlify/blobs": "^11.1.7",
+    "@netlify/blobs": "11.1.4",
     "serverless-http": "^3.2.0",
     "@netlify/identity": "^2.0.0",
     "@netlify/aws-lambda-compat": "^2.0.3"
   },
   "engines": {
     "node": ">=20.12.2"
+  },
+  "overrides": {
+    "@netlify/otel": "7.0.4"
   }
 }
