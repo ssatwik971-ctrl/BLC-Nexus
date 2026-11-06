@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { HttpError, ah, parse, text, optionalText, atLeast } from '../utils/http.js';
-import { mondayOf, parseDate } from '../utils/dates.js';
+import { mondayOf, parseDate, DAY } from '../utils/dates.js';
 import { notify, logAction } from '../utils/notify.js';
 import { maintenanceReminderEmail } from '../utils/emails.js';
 
@@ -12,6 +12,7 @@ export default function opsRoutes(ctx, auth) {
   const r = Router();
   const { prisma, config, mailer } = ctx;
   const officer = auth.requireRole('OFFICER');
+  const adminOnly = auth.requireRole('ADMIN');
 
   // ---------- Offices ----------
   const officeSchema = z.object({
@@ -90,52 +91,75 @@ export default function opsRoutes(ctx, auth) {
     }),
   );
 
-  r.post(
-    '/maintenance',
-    officer,
+  // ---------- Weekly maintenance totals (admin only) ----------
+  // Maintenance is not assigned per member. At the end of each week the admin enters the
+  // total cash and coins the cooperative paid; that amount comes off the coop's total balance.
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const pastOrCurrentWeek = (v) => {
+    const week = weekParam(v);
+    if (week > mondayOf()) throw new HttpError(400, 'You cannot enter maintenance for a future week');
+    return week;
+  };
+  const sumExpenses = (rows) => ({
+    cash: rows.reduce((s, e) => s + (e.cash || 0), 0),
+    coins: rows.reduce((s, e) => s + (e.coins || 0), 0),
+  });
+
+  /** The week the admin should be asked about: this week once it is Sunday, otherwise last week. */
+  const duePromptWeek = (expenses, now = new Date()) => {
+    const recorded = new Set(expenses.map((e) => iso(new Date(e.weekStart))));
+    const thisWeek = mondayOf(now);
+    const lastWeek = new Date(thisWeek.getTime() - 7 * DAY);
+    if (now.getUTCDay() === 0 && !recorded.has(iso(thisWeek))) return iso(thisWeek);
+    if (!recorded.has(iso(lastWeek))) return iso(lastWeek);
+    return null;
+  };
+
+  r.get(
+    '/maintenance-expenses',
+    ah(async (req, res) => {
+      const expenses = await prisma.maintenanceExpense.findMany({ orderBy: { weekStart: 'desc' }, take: 60 });
+      const totals = sumExpenses(await prisma.maintenanceExpense.findMany({}));
+      res.json({
+        expenses,
+        totals,
+        // Only the admin is asked to enter totals.
+        promptWeek: req.user.role === 'ADMIN' ? duePromptWeek(expenses) : null,
+      });
+    }),
+  );
+
+  r.put(
+    '/maintenance-expenses',
+    adminOnly,
     ah(async (req, res) => {
       const body = parse(
         z.object({
-          officeId: z.string().min(1),
-          userId: z.string().min(1),
           weekStart: z.string().optional(),
-          dueAt: z.string().optional().nullable(),
+          cash: z.coerce.number().min(0).max(1e15),
+          coins: z.coerce.number().int().min(0).max(1e12),
           note: optionalText(200),
         }),
         req.body,
       );
-      const assignment = await prisma.maintenanceAssignment.create({
-        data: {
-          officeId: body.officeId,
-          userId: body.userId,
-          weekStart: weekParam(body.weekStart),
-          dueAt: parseDate(body.dueAt),
-          note: body.note,
-          status: 'UNPAID',
-        },
-        include: { office: true },
-      });
-      await notify(ctx, assignment.userId, `You were assigned ${assignment.office.name} maintenance.`, '/app/maintenance');
-      await logAction(ctx, req, 'maintenance.assign', { id: assignment.id });
-      res.status(201).json({ assignment });
+      const week = pastOrCurrentWeek(body.weekStart);
+      const existing = await prisma.maintenanceExpense.findUnique({ where: { weekStart: week } });
+      const data = { cash: body.cash, coins: body.coins, note: body.note, enteredById: req.user.id };
+      const expense = existing
+        ? await prisma.maintenanceExpense.update({ where: { id: existing.id }, data })
+        : await prisma.maintenanceExpense.create({ data: { weekStart: week, ...data } });
+      await logAction(ctx, req, 'maintenance.total', { week: iso(week), cash: body.cash, coins: body.coins });
+      res.json({ expense });
     }),
   );
 
-  r.post(
-    '/maintenance/copy-week',
-    officer,
+  r.delete(
+    '/maintenance-expenses/:id',
+    adminOnly,
     ah(async (req, res) => {
-      const { from, to } = parse(z.object({ from: z.string(), to: z.string() }), req.body);
-      const fromWeek = weekParam(from);
-      const toWeek = weekParam(to);
-      const source = await prisma.maintenanceAssignment.findMany({ where: { weekStart: fromWeek } });
-      if (!source.length) throw new HttpError(404, 'No assignments found in the source week');
-      const result = await prisma.maintenanceAssignment.createMany({
-        data: source.map((a) => ({ officeId: a.officeId, userId: a.userId, weekStart: toWeek, status: 'UNPAID' })),
-        skipDuplicates: true,
-      });
-      await logAction(ctx, req, 'maintenance.copy-week', { from: fromWeek, to: toWeek, created: result.count });
-      res.json({ created: result.count });
+      await prisma.maintenanceExpense.delete({ where: { id: req.params.id } });
+      await logAction(ctx, req, 'maintenance.total.delete', { id: req.params.id });
+      res.json({ ok: true });
     }),
   );
 
@@ -207,7 +231,7 @@ export default function opsRoutes(ctx, auth) {
     '/donations',
     ah(async (req, res) => {
       const type = typeParam(req.query.type);
-      const [donations, all] = await Promise.all([
+      const [donations, all, expenses] = await Promise.all([
         prisma.donation.findMany({
           where: { type },
           include: { user: { select: { id: true, inGameName: true } } },
@@ -215,11 +239,16 @@ export default function opsRoutes(ctx, auth) {
           take: 200,
         }),
         prisma.donation.findMany({ where: { type }, select: { userId: true, amount: true } }),
+        prisma.maintenanceExpense.findMany({}),
       ]);
+      const total = all.reduce((sum, d) => sum + d.amount, 0);
+      const spent = expenses.reduce((sum, e) => sum + (type === 'CASH' ? e.cash || 0 : e.coins || 0), 0);
       res.json({
         type,
         donations,
-        total: all.reduce((sum, d) => sum + d.amount, 0),
+        total,
+        spent,
+        balance: total - spent, // coop total balance = donated - maintenance paid
         mine: all.filter((d) => d.userId === req.user.id).reduce((sum, d) => sum + d.amount, 0),
         count: all.length,
       });
@@ -243,6 +272,51 @@ export default function opsRoutes(ctx, auth) {
         type,
         leaderboard: grouped.map((g, i) => ({ rank: i + 1, userId: g.userId, name: names.get(g.userId), total: g._sum.amount })),
       });
+    }),
+  );
+
+  // ---------- Weekly minimum-donation status (everyone can see; officers and admin set it) ----------
+  r.get(
+    '/donation-status',
+    ah(async (req, res) => {
+      const week = weekParam(req.query.week);
+      const [users, statuses] = await Promise.all([
+        prisma.user.findMany({ where: { status: 'ACTIVE' }, orderBy: { inGameName: 'asc' } }),
+        prisma.weeklyDonationStatus.findMany({ where: { weekStart: week } }),
+      ]);
+      const byUser = new Map(statuses.map((x) => [x.userId, x]));
+      const rank = { ADMIN: 0, OFFICER: 1, MEMBER: 2 };
+      const people = users
+        .map((u) => ({
+          id: u.id,
+          inGameName: u.inGameName,
+          role: u.role,
+          met: Boolean(byUser.get(u.id)?.met),
+          updatedAt: byUser.get(u.id)?.updatedAt || null,
+        }))
+        .sort((a, b) => rank[a.role] - rank[b.role] || a.inGameName.localeCompare(b.inGameName));
+      res.json({ week, people, metCount: people.filter((p) => p.met).length });
+    }),
+  );
+
+  r.put(
+    '/donation-status',
+    officer,
+    ah(async (req, res) => {
+      const body = parse(
+        z.object({ userId: z.string().min(1), met: z.boolean(), weekStart: z.string().optional() }),
+        req.body,
+      );
+      const week = pastOrCurrentWeek(body.weekStart);
+      const member = await prisma.user.findUnique({ where: { id: body.userId } });
+      if (!member || member.status !== 'ACTIVE') throw new HttpError(404, 'Member not found');
+      const existing = await prisma.weeklyDonationStatus.findFirst({ where: { userId: member.id, weekStart: week } });
+      const data = { met: body.met, updatedById: req.user.id };
+      const status = existing
+        ? await prisma.weeklyDonationStatus.update({ where: { id: existing.id }, data })
+        : await prisma.weeklyDonationStatus.create({ data: { userId: member.id, weekStart: week, ...data } });
+      await logAction(ctx, req, 'donation-status.set', { userId: member.id, week: iso(week), met: body.met });
+      res.json({ status });
     }),
   );
 

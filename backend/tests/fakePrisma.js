@@ -16,6 +16,7 @@ function matchField(value, cond) {
     if ('lte' in cond && !(value <= cond.lte)) return false;
     return true;
   }
+  if (value instanceof Date && cond instanceof Date) return value.getTime() === cond.getTime();
   return value === cond;
 }
 
@@ -107,6 +108,8 @@ export function createFakePrisma() {
     notification: table({ read: false }),
     leaderboardEntry: table(),
     donation: table(),
+    maintenanceExpense: table({ cash: 0, coins: 0 }),
+    weeklyDonationStatus: table({ met: false }),
     adminSession: table(),
     forumCategory: table({ order: 0 }),
     document: table({ visibleToRole: 'MEMBER' }),

@@ -13,6 +13,7 @@ const memberNav = [
   { to: '/app/roster', label: 'Roster' },
   { to: '/app/maintenance', label: 'Maintenance' },
   { to: '/app/donations', label: 'Donations' },
+  { to: '/app/weekly-donations', label: 'Weekly donations' },
   { to: '/app/forums', label: 'Forums' },
   { to: '/app/wiki', label: 'Wiki' },
   { to: '/app/votes', label: 'Votes' },

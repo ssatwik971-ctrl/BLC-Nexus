@@ -17,6 +17,7 @@ import Dashboard from './pages/member/Dashboard.jsx';
 import Roster from './pages/member/Roster.jsx';
 import Maintenance from './pages/member/Maintenance.jsx';
 import Donations from './pages/member/Donations.jsx';
+import WeeklyDonations from './pages/member/WeeklyDonations.jsx';
 import { ForumHome, ForumCategory, ForumThread } from './pages/member/Forums.jsx';
 import { WikiList, WikiPage } from './pages/member/Wiki.jsx';
 import Votes from './pages/member/Votes.jsx';
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="roster" element={<Roster />} />
         <Route path="maintenance" element={<Maintenance />} />
         <Route path="donations" element={<Donations />} />
+        <Route path="weekly-donations" element={<WeeklyDonations />} />
         <Route path="forums" element={<ForumHome />} />
         <Route path="forums/category/:id" element={<ForumCategory />} />
         <Route path="forums/thread/:id" element={<ForumThread />} />

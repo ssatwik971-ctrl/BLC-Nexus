@@ -27,13 +27,13 @@ const wiki = [
     slug: 'getting-started',
     title: 'Getting Started in BLC',
     content:
-      'Welcome to the Billionaires Club!\n\n1. Join the cooperative in-game using the BLC tag.\n2. Check the Maintenance page for your weekly office assignment.\n3. Pay your office maintenance before the deadline and mark it as paid.\n4. Donate cash or coins to the cooperative when you can (officers record it).\n5. Introduce yourself in the General forum.\n\n(Officers can edit this page.)',
+      'Welcome to the Billionaires Club!\n\n1. Join the cooperative in-game using the BLC tag.\n2. Check the Weekly donations page to see whether you have given the minimum donation this week.\n3. Check the Maintenance page for the weekly maintenance totals paid by the coop.\n4. Donate cash or coins to the cooperative when you can (officers record it).\n5. Introduce yourself in the General forum.\n\n(Officers can edit this page.)',
   },
   {
     slug: 'maintenance-guide',
     title: 'Office Maintenance Guide',
     content:
-      'Every cooperative office has a weekly maintenance cost. Missing it risks penalties for the whole club.\n\n- Offices are assigned to members each week.\n- Mark your assignment as paid once done; an officer verifies it.\n- If you cannot pay, tell an officer early so it can be reassigned.\n\n(Placeholder content — update with real in-game numbers.)',
+      'Every cooperative office has a weekly maintenance cost. Missing it risks penalties for the whole club.\n\n- The admin enters the total cash and coins paid for maintenance at the end of each week.\n- That amount is deducted from the total balance of the coop (shown on the Donations page).\n\n(Placeholder content — update with real in-game numbers.)',
   },
 ];
 

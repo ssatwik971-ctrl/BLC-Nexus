@@ -79,6 +79,7 @@ model User {
 
   assignments   MaintenanceAssignment[]
   donations     Donation[]
+  donationStatuses WeeklyDonationStatus[]
   threads       ForumThread[]
   posts         ForumPost[]
   upvotes       PostUpvote[]
@@ -156,6 +157,35 @@ model Donation {
 
   @@index([type, userId])
   @@index([donatedAt])
+}
+
+// Total maintenance the cooperative paid for one week (cash + coins). Entered by the
+// admin only at the end of the week; it is deducted from the coop's total balance.
+model MaintenanceExpense {
+  id          String   @id @default(uuid())
+  weekStart   DateTime @unique @db.Date
+  cash        Float    @default(0)
+  coins       Int      @default(0)
+  note        String?
+  enteredById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Whether a member gave the minimum weekly donation. Officers and the admin set it;
+// every member can see it.
+model WeeklyDonationStatus {
+  id          String   @id @default(uuid())
+  userId      String
+  weekStart   DateTime @db.Date
+  met         Boolean  @default(false)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@index([weekStart])
 }
 
 // Server-side sessions for the single admin (signed in with ADMIN_EMAIL + ADMIN_PIN).

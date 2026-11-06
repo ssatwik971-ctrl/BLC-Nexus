@@ -91,18 +91,22 @@ function DonationSection({ type, officer, members }) {
 
       {list.error && <ErrorNote error={list.error} retry={reload} />}
 
-      <div className="mb-4 grid grid-cols-3 gap-4">
+      <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>
-          <div className="label">Club total</div>
+          <div className="label">Coop&apos;s total balance</div>
+          <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.balance) : '—'}</div>
+        </Card>
+        <Card>
+          <div className="label">Total donated</div>
           <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.total) : '—'}</div>
+        </Card>
+        <Card>
+          <div className="label">Paid for maintenance</div>
+          <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.spent) : '—'}</div>
         </Card>
         <Card>
           <div className="label">My total</div>
           <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.mine) : '—'}</div>
-        </Card>
-        <Card>
-          <div className="label">Donations</div>
-          <div className="font-display text-2xl font-extrabold gold-text">{list.data ? fmtNumber(list.data.count) : '—'}</div>
         </Card>
       </div>
 

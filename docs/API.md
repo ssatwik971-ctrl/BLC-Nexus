@@ -45,7 +45,9 @@ Applicants have no account; they use a private status token.
 | GET | `/maintenance?week=YYYY-MM-DD` | Assignments for a week (Monday-normalised) |
 | GET | `/maintenance/history?mine=1` | Past weeks |
 | PATCH | `/maintenance/:id` | Member: own assignment → `PAID` only. Officer: any status/note |
-| GET | `/donations?type=cash\|coins` | Donation history, club total and your total for that type |
+| GET | `/donations?type=cash\|coins` | Donation history, `total` donated, `spent` on maintenance, coop `balance` (total − spent) and your total for that type |
+| GET | `/maintenance-expenses` | Weekly maintenance totals (cash + coins); `promptWeek` is set only for the admin when a week's total is due |
+| GET | `/donation-status?week=YYYY-MM-DD` | Every player (admin, officers, members) with whether they gave the minimum donation that week |
 | GET | `/donations/leaderboard?type=cash\|coins` | Top donors for that type |
 | GET | `/forum/categories`, `/forum/categories/:id/threads`, `/forum/threads/:id` | Read forums |
 | POST | `/forum/threads` | `{ categoryId, title, content }` — rate limited |
@@ -64,8 +66,9 @@ Applicants have no account; they use a private status token.
 | Method | Path | Notes |
 |---|---|---|
 | POST / PATCH | `/offices`, `/offices/:id` | Create / edit offices |
-| POST | `/maintenance` | `{ officeId, userId, weekStart?, dueAt?, note? }` |
-| POST | `/maintenance/copy-week` | `{ from, to }` copy last week's assignments |
+| PUT | `/maintenance-expenses` | **Admin only.** `{ weekStart?, cash, coins, note? }` replaces that week's total; deducted from the coop balance |
+| DELETE | `/maintenance-expenses/:id` | **Admin only.** |
+| PUT | `/donation-status` | Officer/admin: `{ userId, met, weekStart? }` |
 | POST | `/maintenance/remind` | `{ week? }` in-app + email reminders for unpaid |
 | DELETE | `/maintenance/:id` | Remove assignment |
 | POST | `/donations` | `{ userId, type: CASH\|COINS, amount, note?, donatedAt? }` — coins must be whole numbers; notifies the member |

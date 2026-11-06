@@ -8,13 +8,16 @@ const quick = [
   ['/app/forums', 'Forums'],
   ['/app/maintenance', 'Maintenance'],
   ['/app/donations', 'Donations'],
+  ['/app/weekly-donations', 'Weekly donations'],
   ['/app/documents', 'Document vault'],
 ];
 
 export default function Dashboard() {
   useTitle('Dashboard');
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const { data, error, loading, reload } = useFetch('/dashboard');
+  // Only the admin is asked for the weekly maintenance total.
+  const totals = useFetch(hasRole('ADMIN') ? '/maintenance-expenses' : null);
 
   return (
     <>
@@ -22,6 +25,12 @@ export default function Dashboard() {
         title={`Welcome, ${user.inGameName}`}
         subtitle={`You are signed in as ${user.role.charAt(0) + user.role.slice(1).toLowerCase()}.`}
       />
+      {totals.data?.promptWeek && (
+        <div role="status" className="mb-4 rounded-lg border border-gold/50 bg-gold/10 p-3 text-sm">
+          Enter the total maintenance cash and coins for the week of {fmtDate(totals.data.promptWeek)}.{' '}
+          <Link to="/app/maintenance" className="text-gold underline">Open maintenance</Link>
+        </div>
+      )}
       {loading && <SkeletonBlock rows={8} />}
       {error && <ErrorNote error={error} retry={reload} />}
       {data && (

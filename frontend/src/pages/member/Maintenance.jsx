@@ -9,18 +9,125 @@ import { addDays, fmtDate, fmtNumber, isoWeekStart } from '../../lib/format.js';
 
 const STATUSES = ['UNPAID', 'PAID', 'LATE', 'WAIVED'];
 
+/** Weekly maintenance totals. Everyone can see them; only the admin enters them. */
+function MaintenanceTotals({ admin }) {
+  const { data, error, loading, reload } = useFetch('/maintenance-expenses');
+  const [form, setForm] = useState({ weekStart: '', cash: '', coins: '', note: '' });
+  const [busy, setBusy] = useState(false);
+  const expenses = data?.expenses || [];
+  const promptWeek = data?.promptWeek || null;
+  const weekValue = form.weekStart || promptWeek || isoWeekStart();
+
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.put('/maintenance-expenses', {
+        weekStart: weekValue,
+        cash: Number(form.cash || 0),
+        coins: Number(form.coins || 0),
+        note: form.note || undefined,
+      });
+      toast.success('Maintenance total saved and deducted from the coop balance');
+      setForm({ weekStart: '', cash: '', coins: '', note: '' });
+      reload();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (x) => {
+    if (!window.confirm(`Delete the maintenance total for the week of ${fmtDate(x.weekStart)}? It will be added back to the coop balance.`)) return;
+    try {
+      await api.del(`/maintenance-expenses/${x.id}`);
+      toast.success('Deleted');
+      reload();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
+  };
+
+  return (
+    <section aria-labelledby="mt-h" className="mb-8">
+      <h2 id="mt-h" className="mb-1 font-display text-xl font-bold">Weekly maintenance totals</h2>
+      <p className="mb-3 text-sm text-muted">
+        The cash and coins the coop paid for maintenance each week. The admin enters these at the end of the week and they are
+        deducted from the coop&apos;s total balance.
+      </p>
+
+      {error && <ErrorNote error={error} retry={reload} />}
+
+      {admin && promptWeek && (
+        <div role="status" className="mb-4 rounded-lg border border-gold/50 bg-gold/10 p-3 text-sm">
+          <strong>The week of {fmtDate(promptWeek)} is ending or has ended.</strong> Enter the total maintenance cash and coins below.
+        </div>
+      )}
+
+      {admin && (
+        <Card className="mb-4">
+          <form onSubmit={save} className="grid gap-4 sm:grid-cols-5">
+            <Field label="Week starting (Monday)" htmlFor="mt-week">
+              <input id="mt-week" type="date" className="input" required value={weekValue} max={isoWeekStart()} onChange={(e) => setForm({ ...form, weekStart: e.target.value })} />
+            </Field>
+            <Field label="Total cash" htmlFor="mt-cash">
+              <input id="mt-cash" type="number" min="0" step="any" required className="input" value={form.cash} onChange={(e) => setForm({ ...form, cash: e.target.value })} />
+            </Field>
+            <Field label="Total coins" htmlFor="mt-coins">
+              <input id="mt-coins" type="number" min="0" step="1" required className="input" value={form.coins} onChange={(e) => setForm({ ...form, coins: e.target.value })} />
+            </Field>
+            <Field label="Note (optional)" htmlFor="mt-note">
+              <input id="mt-note" maxLength={200} className="input" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+            </Field>
+            <div className="flex items-end"><button type="submit" className="btn-gold w-full" disabled={busy}>{busy ? 'Saving…' : 'Save total'}</button></div>
+          </form>
+          <p className="mt-2 text-xs text-muted">Saving again for the same week replaces that week&apos;s total.</p>
+        </Card>
+      )}
+
+      {loading && !data && <SkeletonBlock rows={3} />}
+      {data && expenses.length === 0 && <EmptyState>No weekly maintenance totals recorded yet.</EmptyState>}
+      {expenses.length > 0 && (
+        <div className="card p-0">
+          <Table>
+            <thead>
+              <tr className="border-b border-line">
+                <th className="th" scope="col">Week of</th>
+                <th className="th" scope="col">Cash</th>
+                <th className="th" scope="col">Coins</th>
+                <th className="th" scope="col">Note</th>
+                {admin && <th className="th text-right" scope="col">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {expenses.map((x) => (
+                <tr key={x.id} className="border-b border-line/60">
+                  <td className="td font-semibold">{fmtDate(x.weekStart)}</td>
+                  <td className="td">{fmtNumber(x.cash)}</td>
+                  <td className="td">{fmtNumber(x.coins)}</td>
+                  <td className="td text-muted">{x.note || '—'}</td>
+                  {admin && <td className="td text-right"><button type="button" className="btn-danger px-2 py-1" onClick={() => remove(x)}>Delete</button></td>}
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Maintenance() {
   useTitle('Maintenance');
   const { user, hasRole } = useAuth();
   const officer = hasRole('OFFICER');
+  const admin = hasRole('ADMIN');
   const [week, setWeek] = useState(isoWeekStart());
   const [tab, setTab] = useState('week');
-  const [form, setForm] = useState({ officeId: '', userId: '' });
 
   const current = useFetch(`/maintenance?week=${week}`);
   const history = useFetch(tab === 'history' ? '/maintenance/history' : null);
-  const offices = useFetch(officer ? '/offices' : null);
-  const members = useFetch(officer ? '/users' : null);
 
   const act = async (fn, ok) => {
     try {
@@ -30,11 +137,6 @@ export default function Maintenance() {
     } catch (err) {
       toast.error(errorMessage(err));
     }
-  };
-
-  const assign = (e) => {
-    e.preventDefault();
-    act(() => api.post('/maintenance', { ...form, weekStart: week }), 'Assigned');
   };
 
   const assignments = current.data?.assignments || [];
@@ -48,10 +150,6 @@ export default function Maintenance() {
           officer && (
             <>
               <button type="button" className="btn-outline" onClick={() => act(async () => {
-                const res = await api.post('/maintenance/copy-week', { from: addDays(week, -7), to: week });
-                toast(`Copied ${res.created} assignment(s) from last week`);
-              })}>Copy last week</button>
-              <button type="button" className="btn-outline" onClick={() => act(async () => {
                 const res = await api.post('/maintenance/remind', { week });
                 toast.success(`Reminded ${res.reminded} member(s)`);
               })}>Send reminders</button>
@@ -59,6 +157,8 @@ export default function Maintenance() {
           )
         }
       />
+
+      <MaintenanceTotals admin={admin} />
 
       <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Maintenance views">
         {[['week', 'This week'], ['history', 'History']].map(([id, label]) => (
@@ -77,7 +177,7 @@ export default function Maintenance() {
         <>
           {current.loading && <SkeletonBlock rows={5} />}
           {current.error && <ErrorNote error={current.error} retry={current.reload} />}
-          {current.data && assignments.length === 0 && <EmptyState>No assignments for this week yet.</EmptyState>}
+          {current.data && assignments.length === 0 && <EmptyState>No per-member maintenance records for this week.</EmptyState>}
           {current.data && assignments.length > 0 && (
             <div className="card p-0">
               <Table>
@@ -122,26 +222,6 @@ export default function Maintenance() {
             </div>
           )}
 
-          {officer && (
-            <Card className="mt-6">
-              <h2 className="mb-3 font-display text-lg font-bold">Assign maintenance for the week of {fmtDate(week)}</h2>
-              <form onSubmit={assign} className="grid gap-4 sm:grid-cols-3">
-                <Field label="Office" htmlFor="m-office">
-                  <select id="m-office" className="input" required value={form.officeId} onChange={(e) => setForm({ ...form, officeId: e.target.value })}>
-                    <option value="">Select…</option>
-                    {(offices.data?.offices || []).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                  </select>
-                </Field>
-                <Field label="Member" htmlFor="m-user">
-                  <select id="m-user" className="input" required value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
-                    <option value="">Select…</option>
-                    {(members.data?.members || []).map((m) => <option key={m.id} value={m.id}>{m.inGameName}</option>)}
-                  </select>
-                </Field>
-                <div className="flex items-end"><button type="submit" className="btn-gold w-full">Assign</button></div>
-              </form>
-            </Card>
-          )}
         </>
       )}
 
