@@ -178,6 +178,8 @@ export default function communityRoutes(ctx, auth, limiters) {
   r.post(
     '/forum/posts/:id/upvote',
     ah(async (req, res) => {
+      const post = await prisma.forumPost.findUnique({ where: { id: req.params.id } });
+      if (!post) throw new HttpError(404, 'Post not found');
       const key = { postId_userId: { postId: req.params.id, userId: req.user.id } };
       const existing = await prisma.postUpvote.findUnique({ where: key });
       if (existing) await prisma.postUpvote.delete({ where: key });
@@ -270,7 +272,7 @@ export default function communityRoutes(ctx, auth, limiters) {
     '/votes',
     ah(async (req, res) => {
       const votes = await prisma.vote.findMany({ orderBy: { createdAt: 'desc' }, take: 100 });
-      const visible = votes.filter((v) => v.status !== 'DRAFT' || req.atLeast(user.role, 'OFFICER'));
+      const visible = votes.filter((v) => v.status !== 'DRAFT' || atLeast(req.user.role, 'OFFICER'));
       res.json({ votes: await Promise.all(visible.map((v) => describeVote(v, req.user))) });
     }),
   );

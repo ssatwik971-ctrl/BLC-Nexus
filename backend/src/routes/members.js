@@ -27,14 +27,10 @@ export default function memberRoutes(ctx) {
       const week = mondayOf(now);
       const nextDue = new Date(week.getTime() + 7 * DAY);
 
-      const [settings, offices, mine, votes, unread] = await Promise.all([
+      const [settings, offices, myStatus, votes, unread] = await Promise.all([
         readSettings(prisma),
         prisma.office.findMany({ orderBy: { sortOrder: 'asc' } }),
-        prisma.maintenanceAssignment.findMany({
-          where: { userId: req.user.id, weekStart: { gte: week } },
-          include: { office: true },
-          orderBy: { weekStart: 'asc' },
-        }),
+        prisma.weeklyDonationStatus.findFirst({ where: { userId: req.user.id, weekStart: week } }),
         prisma.vote.findMany({ where: { status: 'OPEN', endTime: { gt: now } } }),
         prisma.notification.count({ where: { userId: req.user.id, read: false } }),
       ]);
@@ -55,7 +51,7 @@ export default function memberRoutes(ctx) {
         },
         nextMaintenanceDue: nextDue,
         currentWeek: week,
-        myAssignments: mine,
+        myDonationMet: Boolean(myStatus?.met),
         pendingVotes,
         unreadNotifications: unread,
       });
@@ -67,21 +63,13 @@ export default function memberRoutes(ctx) {
     '/users',
     ah(async (req, res) => {
       const q = String(req.query.q || '').trim();
-      const week = mondayOf();
-      const [users, assignments] = await Promise.all([
-        prisma.user.findMany({
-          where: {
-            status: 'ACTIVE',
-            ...(q ? { inGameName: { contains: q, mode: 'insensitive' } } : {}),
-          },
-          orderBy: { inGameName: 'asc' },
-        }),
-        prisma.maintenanceAssignment.findMany({ where: { weekStart: week }, include: { office: true } }),
-      ]);
-      const byUser = new Map();
-      for (const a of assignments) {
-        byUser.set(a.userId, [...(byUser.get(a.userId) || []), a.office.name]);
-      }
+      const users = await prisma.user.findMany({
+        where: {
+          status: 'ACTIVE',
+          ...(q ? { inGameName: { contains: q, mode: 'insensitive' } } : {}),
+        },
+        orderBy: { inGameName: 'asc' },
+      });
       const isAdmin = req.user.role === 'ADMIN';
       res.json({
         members: users.map((u) => {
@@ -91,7 +79,6 @@ export default function memberRoutes(ctx) {
             inGameName: u.inGameName,
             role: u.role,
             joinedAt: u.joinedAt,
-            offices: byUser.get(u.id) || [],
             playerId: u.playerId,
             timezone: u.timezone,
             contact: u.contact,
@@ -108,19 +95,14 @@ export default function memberRoutes(ctx) {
   r.get(
     '/users/me',
     ah(async (req, res) => {
-      const [recent, totals, paid, posts] = await Promise.all([
+      const [recent, totals, weeksMet, posts] = await Promise.all([
         prisma.donation.findMany({
           where: { userId: req.user.id },
           orderBy: { donatedAt: 'desc' },
           take: 50,
         }),
         prisma.donation.groupBy({ by: ['type'], where: { userId: req.user.id }, _sum: { amount: true } }),
-        prisma.maintenanceAssignment.findMany({
-          where: { userId: req.user.id },
-          include: { office: true },
-          orderBy: { weekStart: 'desc' },
-          take: 50,
-        }),
+        prisma.weeklyDonationStatus.count({ where: { userId: req.user.id, met: true } }),
         prisma.forumPost.count({ where: { userId: req.user.id } }),
       ]);
       const sumOf = (type) => totals.find((t) => t.type === type)?._sum.amount || 0;
@@ -130,8 +112,7 @@ export default function memberRoutes(ctx) {
           donations: recent,
           totalCash: sumOf('CASH'),
           totalCoins: sumOf('COINS'),
-          maintenance: paid,
-          maintenancePaid: paid.filter((a) => a.status === 'PAID').length,
+          weeksDonated: weeksMet,
           forumPosts: posts,
         },
       });

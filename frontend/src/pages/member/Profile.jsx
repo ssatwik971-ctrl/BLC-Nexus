@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Badge, Card, EmptyState, ErrorNote, Field, PageHeader, SkeletonBlock, Table } from '../../components/ui.jsx';
+import { Card, EmptyState, ErrorNote, Field, PageHeader, SkeletonBlock, Table } from '../../components/ui.jsx';
 import { api, errorMessage } from '../../lib/api.js';
 import { useAuth } from '../../lib/auth.jsx';
 import { useFetch, useTitle } from '../../lib/hooks.js';
@@ -81,7 +81,6 @@ export default function Profile() {
                   ))}
                 </div>
               </fieldset>
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--c-gold))]" checked={form.notifyEmail} onChange={(e) => setForm({ ...form, notifyEmail: e.target.checked })} />Email me maintenance reminders</label>
               <button type="submit" className="btn-gold" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
             </form>
           </Card>
@@ -93,6 +92,18 @@ export default function Profile() {
                 ? 'The admin account signs in with the email and PIN set in the site environment variables. To change the PIN, change ADMIN_PIN in Netlify and redeploy; every old admin session is signed out.'
                 : 'Passwords are managed by Netlify Identity. To change yours, sign out and use “Forgot password?” on the login page.'}
             </p>
+            {user?.role === 'ADMIN' && (
+              <button
+                type="button"
+                className="btn-outline mt-3"
+                onClick={async () => {
+                  if (!window.confirm('Sign the admin out on every device, including this one?')) return;
+                  try { await api.post('/auth/admin-logout-all'); window.location.assign('/admin-login'); } catch (err) { toast.error(errorMessage(err)); }
+                }}
+              >
+                Sign out on all devices
+              </button>
+            )}
           </Card>
         </div>
       )}
@@ -103,23 +114,15 @@ export default function Profile() {
           <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <Card><div className="label">Cash donated</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(c.totalCash)}</div></Card>
             <Card><div className="label">Coins donated</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(c.totalCoins)}</div></Card>
-            <Card><div className="label">Maintenance paid</div><div className="font-display text-2xl font-extrabold gold-text">{c.maintenancePaid}</div></Card>
+            <Card><div className="label">Weeks donated</div><div className="font-display text-2xl font-extrabold gold-text">{c.weeksDonated}</div></Card>
             <Card><div className="label">Forum posts</div><div className="font-display text-2xl font-extrabold gold-text">{c.forumPosts}</div></Card>
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6">
             <Card>
               <h3 className="mb-2 font-semibold">Recent donations</h3>
               {c.donations.length === 0 ? <EmptyState>No donations recorded yet.</EmptyState> : (
                 <Table><tbody>{c.donations.slice(0, 8).map((d) => (
                   <tr key={d.id} className="border-b border-line/60"><td className="td">{d.type === 'CASH' ? 'Cash' : 'Coins'}</td><td className="td">{fmtNumber(d.amount)}</td><td className="td text-muted">{fmtDate(d.donatedAt)}</td></tr>
-                ))}</tbody></Table>
-              )}
-            </Card>
-            <Card>
-              <h3 className="mb-2 font-semibold">Recent maintenance</h3>
-              {c.maintenance.length === 0 ? <EmptyState>No maintenance assignments yet.</EmptyState> : (
-                <Table><tbody>{c.maintenance.slice(0, 8).map((a) => (
-                  <tr key={a.id} className="border-b border-line/60"><td className="td">{a.office.name}</td><td className="td text-muted">{fmtDate(a.weekStart)}</td><td className="td"><Badge value={a.status} /></td></tr>
                 ))}</tbody></Table>
               )}
             </Card>

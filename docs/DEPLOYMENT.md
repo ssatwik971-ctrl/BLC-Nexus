@@ -1,3 +1,5 @@
+> **Note:** this guide describes the older Vercel + Railway setup. The current target is Netlify only; follow `docs/NETLIFY-MIGRATION.md` and `docs/NETLIFY-FINAL-RELEASE-CHECKLIST.md` instead.
+
 # Deploying BLC Nexus (Vercel + Railway)
 
 Frontend → **Vercel**, API + PostgreSQL → **Railway**. Render, Fly.io or a plain VPS work the same way: you need Node 20+, a PostgreSQL database, a persistent folder for uploads, and two environment files.

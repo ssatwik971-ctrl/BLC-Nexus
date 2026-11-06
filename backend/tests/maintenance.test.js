@@ -79,6 +79,13 @@ describe('weekly maintenance totals (admin only)', () => {
 });
 
 describe('weekly donation status', () => {
+  it('officers cannot mark themselves; the admin can mark anyone', async () => {
+    const own = { userId: officerUser.id, met: true, weekStart: thisWeek };
+    expect((await t.request('PUT', '/api/donation-status', { token: officer, body: own })).status).toBe(403);
+    expect((await t.request('PUT', '/api/donation-status', { cookie: adminCookie, body: own })).status).toBe(200);
+    await t.request('PUT', '/api/donation-status', { cookie: adminCookie, body: { ...own, met: false } });
+  });
+
   it('lists the admin, officers and members for everyone', async () => {
     const res = await t.request('GET', `/api/donation-status?week=${thisWeek}`, { token: member });
     expect(res.status).toBe(200);
@@ -99,10 +106,45 @@ describe('weekly donation status', () => {
   });
 
   it('keeps each week separate and rejects future weeks and unknown players', async () => {
-    await t.request('PUT', '/api/donation-status', { token: officer, body: { userId: officerUser.id, met: true, weekStart: lastWeek } });
+    await t.request('PUT', '/api/donation-status', { cookie: adminCookie, body: { userId: officerUser.id, met: true, weekStart: lastWeek } });
     expect((await t.request('GET', `/api/donation-status?week=${lastWeek}`, { token: member })).body.metCount).toBe(1);
     expect((await t.request('GET', `/api/donation-status?week=${thisWeek}`, { token: member })).body.metCount).toBe(0);
     expect((await t.request('PUT', '/api/donation-status', { token: officer, body: { userId: memberUser.id, met: true, weekStart: nextWeek } })).status).toBe(400);
     expect((await t.request('PUT', '/api/donation-status', { token: officer, body: { userId: 'nobody', met: true } })).status).toBe(404);
+  });
+});
+
+describe('safety rules', () => {
+  it('a member with donations cannot be deleted (the coop balance would change)', async () => {
+    const del = await t.request('DELETE', `/api/admin/users/${memberUser.id}`, { token: officer });
+    expect(del.status).toBe(409);
+    const stillThere = await t.request('GET', '/api/donations?type=CASH', { token: member });
+    expect(stillThere.body.total).toBe(5000);
+  });
+
+  it('a member without donations can still be deleted', async () => {
+    const spare = await t.createUser('MEMBER', 'spare');
+    expect((await t.request('DELETE', `/api/admin/users/${spare.id}`, { token: officer })).status).toBe(200);
+  });
+
+  it('upvoting a post that does not exist is a 404, not a server error', async () => {
+    expect((await t.request('POST', '/api/forum/posts/nope/upvote', { token: member })).status).toBe(404);
+  });
+
+  it('draft votes are listed for officers without crashing and hidden from members', async () => {
+    await t.prisma.vote.create({ data: { title: 'Draft vote', options: ['A', 'B'], status: 'DRAFT', endTime: new Date(Date.now() + DAY), startTime: new Date() } });
+    const asMember = await t.request('GET', '/api/votes', { token: member });
+    const asOfficer = await t.request('GET', '/api/votes', { token: officer });
+    expect(asMember.status).toBe(200);
+    expect(asMember.body.votes.some((v) => v.title === 'Draft vote')).toBe(false);
+    expect(asOfficer.status).toBe(200);
+    expect(asOfficer.body.votes.some((v) => v.title === 'Draft vote')).toBe(true);
+  });
+
+  it('only the admin can sign out all devices', async () => {
+    expect((await t.request('POST', '/api/auth/admin-logout-all', { token: officer })).status).toBe(403);
+    const cookie = await t.adminLogin();
+    expect((await t.request('POST', '/api/auth/admin-logout-all', { cookie })).status).toBe(200);
+    expect((await t.request('GET', '/api/auth/me', { cookie })).status).toBe(401);
   });
 });

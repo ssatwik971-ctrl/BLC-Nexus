@@ -15,7 +15,7 @@ export const DEFAULT_SETTINGS = {
       'Coordinate, compete and climb. BLC members pool resources, keep every cooperative office maintained and share the strategies that move the leaderboard.',
     rules: [
       'Be active: check in at least a few times per week.',
-      'Pay your assigned office maintenance before the weekly deadline.',
+      'Give the minimum weekly donation to the cooperative.',
       'Respect every member — no harassment or drama.',
       'Share strategy openly; do not leak private BLC info.',
       'Officers have the final say on day-to-day operations; big decisions go to a vote.',

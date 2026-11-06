@@ -36,15 +36,12 @@ Applicants have no account; they use a private status token.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/dashboard` | Stats, offices summary, my assignments, pending votes |
+| GET | `/dashboard` | Stats, offices summary, my weekly donation status, pending votes |
 | GET | `/users?q=` | Roster (respects each member's hidden fields) |
 | GET / PATCH | `/users/me` | Own profile + contribution history / update profile and privacy |
 | GET | `/notifications` | Own notifications |
 | POST | `/notifications/read-all`, `/notifications/:id/read` | Mark read |
 | GET | `/offices` | List offices |
-| GET | `/maintenance?week=YYYY-MM-DD` | Assignments for a week (Monday-normalised) |
-| GET | `/maintenance/history?mine=1` | Past weeks |
-| PATCH | `/maintenance/:id` | Member: own assignment → `PAID` only. Officer: any status/note |
 | GET | `/donations?type=cash\|coins` | Donation history, `total` donated, `spent` on maintenance, coop `balance` (total − spent) and your total for that type |
 | GET | `/maintenance-expenses` | Weekly maintenance totals (cash + coins); `promptWeek` is set only for the admin when a week's total is due |
 | GET | `/donation-status?week=YYYY-MM-DD` | Every player (admin, officers, members) with whether they gave the minimum donation that week |
@@ -68,9 +65,8 @@ Applicants have no account; they use a private status token.
 | POST / PATCH | `/offices`, `/offices/:id` | Create / edit offices |
 | PUT | `/maintenance-expenses` | **Admin only.** `{ weekStart?, cash, coins, note? }` replaces that week's total; deducted from the coop balance |
 | DELETE | `/maintenance-expenses/:id` | **Admin only.** |
-| PUT | `/donation-status` | Officer/admin: `{ userId, met, weekStart? }` |
-| POST | `/maintenance/remind` | `{ week? }` in-app + email reminders for unpaid |
-| DELETE | `/maintenance/:id` | Remove assignment |
+| PUT | `/donation-status` | Officer/admin: `{ userId, met, weekStart? }` (officers cannot change their own) |
+| POST | `/auth/admin-logout-all` | Admin only: removes every admin session |
 | POST | `/donations` | `{ userId, type: CASH\|COINS, amount, note?, donatedAt? }` — coins must be whole numbers; notifies the member |
 | DELETE | `/donations/:id` | Remove a mistaken entry |
 | DELETE | `/offices/:id`, `/wiki/:slug` | Delete content |

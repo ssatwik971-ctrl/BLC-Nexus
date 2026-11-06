@@ -39,25 +39,17 @@ export default function Dashboard() {
             <Card><div className="label">Cooperative power</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(data.stats?.power)}</div></Card>
             <Card><div className="label">Weekly money cost</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(data.offices.totalWeeklyMoneyCost)}</div></Card>
             <Card><div className="label">Weekly coin cost</div><div className="font-display text-2xl font-extrabold gold-text">{fmtNumber(data.offices.totalWeeklyCoinCost)}</div></Card>
-            <Card><div className="label">Next maintenance due</div><div className="font-display text-xl font-extrabold gold-text">{fmtDate(data.nextMaintenanceDue)}</div></Card>
+            <Card><div className="label">This week ends</div><div className="font-display text-xl font-extrabold gold-text">{fmtDate(data.nextMaintenanceDue)}</div></Card>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
-              <h2 className="mb-3 font-display text-lg font-bold">My maintenance assignments</h2>
-              {data.myAssignments.length === 0 ? (
-                <EmptyState>No assignments this week or later.</EmptyState>
-              ) : (
-                <ul className="divide-y divide-line">
-                  {data.myAssignments.map((a) => (
-                    <li key={a.id} className="flex items-center justify-between py-2 text-sm">
-                      <span>{a.office.name} <span className="text-muted">· week of {fmtDate(a.weekStart)}</span></span>
-                      <Badge value={a.status} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Link to="/app/maintenance" className="mt-3 inline-block text-sm text-gold underline">Open maintenance tracker</Link>
+              <h2 className="mb-3 font-display text-lg font-bold">My weekly donation</h2>
+              <p className="text-sm">
+                This week: <Badge value={data.myDonationMet ? 'Donated' : 'Not donated'} tone={data.myDonationMet ? 'gold' : 'muted'} />
+              </p>
+              <p className="mt-2 text-sm text-muted">Officers and the admin mark whether you gave the minimum donation.</p>
+              <Link to="/app/weekly-donations" className="mt-3 inline-block text-sm text-gold underline">See everyone&apos;s status</Link>
             </Card>
 
             <Card>

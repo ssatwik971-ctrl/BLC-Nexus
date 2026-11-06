@@ -11,7 +11,8 @@ import { logAction } from '../utils/notify.js';
 // serverless cold starts. Per address and (higher) across all addresses.
 const ADMIN_FAIL_WINDOW_MS = 15 * 60 * 1000;
 const ADMIN_FAIL_PER_IP = 5;
-const ADMIN_FAIL_GLOBAL = 20;
+// High on purpose: a low all-address cap would let a stranger keep the real admin locked out.
+const ADMIN_FAIL_GLOBAL = 200;
 
 const password = z.string().min(10, 'Use at least 10 characters').max(128);
 // Used to keep response time similar whether or not the account exists.
@@ -153,6 +154,19 @@ export default function authRoutes(ctx, auth, limiters) {
     ah(async (req, res) => {
       await endAdminSession(ctx, req, res);
       res.json({ ok: true });
+    }),
+  );
+
+  // Sign the admin out of every device (all stored admin sessions are removed).
+  r.post(
+    '/admin-logout-all',
+    auth.authenticate,
+    auth.requireRole('ADMIN'),
+    ah(async (req, res) => {
+      const { count } = await prisma.adminSession.deleteMany({});
+      await endAdminSession(ctx, req, res);
+      await logAction(ctx, req, 'admin.logout-all', { sessions: count });
+      res.json({ ok: true, sessions: count });
     }),
   );
 

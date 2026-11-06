@@ -44,13 +44,6 @@ export const applicationDecisionEmail = (config, app, token) => {
   };
 };
 
-export const maintenanceReminderEmail = (config, user, office, weekStart) => ({
-  subject: 'Maintenance payment reminder',
-  title: 'Maintenance reminder',
-  html: `<p>Hi ${esc(user.inGameName)}, your <strong>${esc(office.name)}</strong> maintenance for the week of ${esc(weekStart)} is still unpaid.</p>${button(`${config.frontendUrl}/app/maintenance`, 'Open maintenance tracker')}`,
-  text: `Your ${office.name} maintenance for the week of ${weekStart} is unpaid. ${config.frontendUrl}/app/maintenance`,
-});
-
 export const contactEmail = (config, { name, email, message }) => ({
   subject: `Contact form: ${name}`,
   title: 'New contact message',

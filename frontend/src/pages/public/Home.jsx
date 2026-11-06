@@ -5,7 +5,7 @@ import { useFetch, useTitle } from '../../lib/hooks.js';
 import { fmtNumber } from '../../lib/format.js';
 
 const features = [
-  ['Office & maintenance tracker', 'Know exactly who pays which cooperative office each week — with deadlines and reminders.'],
+  ['Weekly maintenance & donations', 'See what the coop paid for maintenance each week and who gave the minimum donation.'],
   ['Cash & coin donations', 'Every cash and coin donation to the cooperative is recorded openly, with a top-donor board for each.'],
   ['Strategy forums & wiki', 'Production chains, market trends and office strategy — shared, searchable, permanent.'],
   ['Transparent governance', 'Members vote on tags, strategy and officer elections. Every decision on the record.'],

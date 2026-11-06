@@ -153,6 +153,11 @@ export default function adminRoutes(ctx, auth) {
       if (!target) throw new HttpError(404, 'Member not found');
       if (target.id === req.user.id) throw new HttpError(400, 'You cannot remove yourself');
       assertCanManage(req.user, target);
+      // Deleting a member would also erase their donations and change the coop's balance.
+      const donations = await prisma.donation.count({ where: { userId: target.id } });
+      if (donations > 0) {
+        throw new HttpError(409, 'This member has recorded donations, so they cannot be deleted (it would change the coop balance). Suspend them instead.');
+      }
       await prisma.user.delete({ where: { id: target.id } });
       await logAction(ctx, req, 'user.delete', { userId: target.id, inGameName: target.inGameName });
       res.json({ ok: true });

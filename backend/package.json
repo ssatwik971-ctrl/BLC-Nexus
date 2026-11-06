@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "start:prod": "prisma db push --skip-generate && node src/server.js",
+    "start:prod": "node src/server.js",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

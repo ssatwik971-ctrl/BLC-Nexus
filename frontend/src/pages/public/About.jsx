@@ -58,8 +58,8 @@ export default function About() {
       <Card>
         <h2 className="font-display text-lg font-bold text-gold">Maintenance costs &amp; donations</h2>
         <p className="mt-2 text-muted">
-          Every office has a weekly maintenance cost in in-game money and/or coins. BLC rotates payers each week so the load is
-          shared and no penalty is ever triggered. Cash and coin donations to the cooperative are recorded by BLC officers and shown
+          Every office has a weekly maintenance cost in in-game money and/or coins. The admin records the total maintenance paid each
+          week and it is deducted from the coop's total balance. Cash and coin donations to the cooperative are recorded by BLC officers and shown
           in separate cash and coin sections. Everything is tracked manually in BLC Nexus; nothing here involves real money.
         </p>
       </Card>

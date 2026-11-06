@@ -1,25 +1,36 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import ResourceManager from '../../components/ResourceManager.jsx';
-import { Badge, Card, EmptyState, ErrorNote, Field, PageHeader, SkeletonBlock, Table } from '../../components/ui.jsx';
+import { Card, EmptyState, ErrorNote, Field, PageHeader, SkeletonBlock, Table } from '../../components/ui.jsx';
 import { api, errorMessage } from '../../lib/api.js';
+import { downloadCsv } from '../../lib/csv.js';
 import { useAuth } from '../../lib/auth.jsx';
 import { useFetch, useTitle } from '../../lib/hooks.js';
-import { addDays, fmtDate, fmtNumber, isoWeekStart } from '../../lib/format.js';
-
-const STATUSES = ['UNPAID', 'PAID', 'LATE', 'WAIVED'];
+import { fmtDate, fmtNumber, isoWeekStart } from '../../lib/format.js';
 
 /** Weekly maintenance totals. Everyone can see them; only the admin enters them. */
 function MaintenanceTotals({ admin }) {
   const { data, error, loading, reload } = useFetch('/maintenance-expenses');
+  // Current coop balances, used to warn the admin before the balance would go negative.
+  const cashBal = useFetch(admin ? '/donations?type=CASH' : null);
+  const coinBal = useFetch(admin ? '/donations?type=COINS' : null);
   const [form, setForm] = useState({ weekStart: '', cash: '', coins: '', note: '' });
   const [busy, setBusy] = useState(false);
   const expenses = data?.expenses || [];
   const promptWeek = data?.promptWeek || null;
   const weekValue = form.weekStart || promptWeek || isoWeekStart();
 
+  const latest = expenses[0];
+  const useLast = () => latest && setForm({ ...form, cash: String(latest.cash), coins: String(latest.coins) });
+
   const save = async (e) => {
     e.preventDefault();
+    // Entering a week again replaces it, so add that week's old amounts back before comparing.
+    const old = expenses.find((x) => String(x.weekStart).slice(0, 10) === weekValue);
+    const cashAfter = (cashBal.data?.balance ?? Infinity) + (old?.cash || 0) - Number(form.cash || 0);
+    const coinsAfter = (coinBal.data?.balance ?? Infinity) + (old?.coins || 0) - Number(form.coins || 0);
+    if ((cashAfter < 0 || coinsAfter < 0)
+      && !window.confirm('This is more than the coop currently holds, so the balance will go negative. Save anyway?')) return;
     setBusy(true);
     try {
       await api.put('/maintenance-expenses', {
@@ -31,6 +42,8 @@ function MaintenanceTotals({ admin }) {
       toast.success('Maintenance total saved and deducted from the coop balance');
       setForm({ weekStart: '', cash: '', coins: '', note: '' });
       reload();
+      cashBal.reload();
+      coinBal.reload();
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -44,10 +57,17 @@ function MaintenanceTotals({ admin }) {
       await api.del(`/maintenance-expenses/${x.id}`);
       toast.success('Deleted');
       reload();
+      cashBal.reload();
+      coinBal.reload();
     } catch (err) {
       toast.error(errorMessage(err));
     }
   };
+
+  const exportCsv = () => downloadCsv('maintenance-totals.csv', [
+    ['Week of', 'Cash', 'Coins', 'Note'],
+    ...expenses.map((x) => [String(x.weekStart).slice(0, 10), x.cash, x.coins, x.note || '']),
+  ]);
 
   return (
     <section aria-labelledby="mt-h" className="mb-8">
@@ -82,10 +102,18 @@ function MaintenanceTotals({ admin }) {
             </Field>
             <div className="flex items-end"><button type="submit" className="btn-gold w-full" disabled={busy}>{busy ? 'Saving…' : 'Save total'}</button></div>
           </form>
+          {latest && (
+            <button type="button" className="btn-ghost mt-2 px-2 py-1 text-sm" onClick={useLast}>
+              Use the last saved amounts ({fmtNumber(latest.cash)} cash, {fmtNumber(latest.coins)} coins)
+            </button>
+          )}
           <p className="mt-2 text-xs text-muted">Saving again for the same week replaces that week&apos;s total.</p>
         </Card>
       )}
 
+      {expenses.length > 0 && (
+        <div className="mb-2 text-right"><button type="button" className="btn-outline px-3 py-1 text-sm" onClick={exportCsv}>Download CSV</button></div>
+      )}
       {loading && !data && <SkeletonBlock rows={3} />}
       {data && expenses.length === 0 && <EmptyState>No weekly maintenance totals recorded yet.</EmptyState>}
       {expenses.length > 0 && (
@@ -120,143 +148,53 @@ function MaintenanceTotals({ admin }) {
 
 export default function Maintenance() {
   useTitle('Maintenance');
-  const { user, hasRole } = useAuth();
+  const { hasRole } = useAuth();
   const officer = hasRole('OFFICER');
   const admin = hasRole('ADMIN');
-  const [week, setWeek] = useState(isoWeekStart());
-  const [tab, setTab] = useState('week');
-
-  const current = useFetch(`/maintenance?week=${week}`);
-  const history = useFetch(tab === 'history' ? '/maintenance/history' : null);
-
-  const act = async (fn, ok) => {
-    try {
-      await fn();
-      if (ok) toast.success(ok);
-      current.reload();
-    } catch (err) {
-      toast.error(errorMessage(err));
-    }
-  };
-
-  const assignments = current.data?.assignments || [];
+  // Officers manage offices below; members just read the list.
+  const offices = useFetch(officer ? null : '/offices');
+  const officeList = offices.data?.offices || [];
 
   return (
     <>
       <PageHeader
-        title="Office & maintenance tracker"
-        subtitle="Who pays which office each week. Mark yours as paid once done — an officer verifies."
-        actions={
-          officer && (
-            <>
-              <button type="button" className="btn-outline" onClick={() => act(async () => {
-                const res = await api.post('/maintenance/remind', { week });
-                toast.success(`Reminded ${res.reminded} member(s)`);
-              })}>Send reminders</button>
-            </>
-          )
-        }
+        title="Maintenance"
+        subtitle="Weekly maintenance totals paid by the coop, plus the office list."
       />
 
       <MaintenanceTotals admin={admin} />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Maintenance views">
-        {[['week', 'This week'], ['history', 'History']].map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={tab === id} type="button" className={tab === id ? 'btn-gold' : 'btn-ghost'} onClick={() => setTab(id)}>{label}</button>
-        ))}
-        {tab === 'week' && (
-          <div className="ml-auto flex items-center gap-1">
-            <button type="button" className="btn-ghost px-2" aria-label="Previous week" onClick={() => setWeek(addDays(week, -7))}>←</button>
-            <span className="text-sm">Week of <strong>{fmtDate(week)}</strong></span>
-            <button type="button" className="btn-ghost px-2" aria-label="Next week" onClick={() => setWeek(addDays(week, 7))}>→</button>
-          </div>
-        )}
-      </div>
-
-      {tab === 'week' && (
-        <>
-          {current.loading && <SkeletonBlock rows={5} />}
-          {current.error && <ErrorNote error={current.error} retry={current.reload} />}
-          {current.data && assignments.length === 0 && <EmptyState>No per-member maintenance records for this week.</EmptyState>}
-          {current.data && assignments.length > 0 && (
+      {!officer && (
+        <section aria-labelledby="off-h">
+          <h2 id="off-h" className="mb-2 font-display text-xl font-bold">Offices</h2>
+          {offices.loading && <SkeletonBlock rows={3} />}
+          {offices.error && <ErrorNote error={offices.error} retry={offices.reload} />}
+          {offices.data && officeList.length === 0 && <EmptyState>No offices yet.</EmptyState>}
+          {officeList.length > 0 && (
             <div className="card p-0">
               <Table>
                 <thead>
                   <tr className="border-b border-line">
                     <th className="th" scope="col">Office</th>
-                    <th className="th" scope="col">Assigned to</th>
-                    <th className="th" scope="col">Cost</th>
-                    <th className="th" scope="col">Status</th>
-                    <th className="th text-right" scope="col">Actions</th>
+                    <th className="th" scope="col">Level</th>
+                    <th className="th" scope="col">Weekly money</th>
+                    <th className="th" scope="col">Weekly coins</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {assignments.map((a) => {
-                    const mine = a.userId === user.id;
-                    return (
-                      <tr key={a.id} className="border-b border-line/60">
-                        <td className="td font-semibold">{a.office.name}</td>
-                        <td className="td">{a.user.inGameName}{mine && <span className="text-gold"> (you)</span>}</td>
-                        <td className="td text-muted">{fmtNumber(a.office.weeklyMoneyCost)}{a.office.weeklyCoinCost ? ` + ${a.office.weeklyCoinCost} coins` : ''}</td>
-                        <td className="td"><Badge value={a.status} /></td>
-                        <td className="td text-right">
-                          {officer ? (
-                            <>
-                              <label className="sr-only" htmlFor={`st-${a.id}`}>Status</label>
-                              <select id={`st-${a.id}`} className="input inline-block w-auto py-1" value={a.status} onChange={(e) => act(() => api.patch(`/maintenance/${a.id}`, { status: e.target.value }), 'Updated')}>
-                                {STATUSES.map((s) => <option key={s}>{s}</option>)}
-                              </select>
-                              <button type="button" className="btn-danger ml-1 px-2 py-1" onClick={() => window.confirm('Remove this assignment?') && act(() => api.del(`/maintenance/${a.id}`), 'Removed')}>Remove</button>
-                            </>
-                          ) : (
-                            mine && a.status !== 'PAID' && (
-                              <button type="button" className="btn-gold px-3 py-1" onClick={() => act(() => api.patch(`/maintenance/${a.id}`, { status: 'PAID' }), 'Marked as paid')}>Mark paid</button>
-                            )
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </Table>
-            </div>
-          )}
-
-        </>
-      )}
-
-      {tab === 'history' && (
-        <>
-          {history.loading && <SkeletonBlock rows={5} />}
-          {history.error && <ErrorNote error={history.error} retry={history.reload} />}
-          {history.data && history.data.assignments.length === 0 && <EmptyState>No past maintenance records yet.</EmptyState>}
-          {history.data && history.data.assignments.length > 0 && (
-            <div className="card p-0">
-              <Table>
-                <thead>
-                  <tr className="border-b border-line">
-                    <th className="th" scope="col">Week of</th>
-                    <th className="th" scope="col">Office</th>
-                    <th className="th" scope="col">Member</th>
-                    <th className="th" scope="col">Result</th>
-                    <th className="th" scope="col">Paid</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.data.assignments.map((a) => (
-                    <tr key={a.id} className="border-b border-line/60">
-                      <td className="td">{fmtDate(a.weekStart)}</td>
-                      <td className="td">{a.office.name}</td>
-                      <td className="td">{a.user.inGameName}</td>
-                      <td className="td"><Badge value={a.status} /></td>
-                      <td className="td text-muted">{a.paidAt ? fmtDate(a.paidAt) : '—'}</td>
+                  {officeList.map((o) => (
+                    <tr key={o.id} className="border-b border-line/60">
+                      <td className="td font-semibold">{o.name}</td>
+                      <td className="td">{o.level}</td>
+                      <td className="td">{fmtNumber(o.weeklyMoneyCost)}</td>
+                      <td className="td">{fmtNumber(o.weeklyCoinCost)}</td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
             </div>
           )}
-        </>
+        </section>
       )}
 
       {officer && (

@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../lib/api.js';
 import { useAuth } from '../../lib/auth.jsx';
 import { useFetch, useTitle } from '../../lib/hooks.js';
 import { addDays, fmtDate, isoWeekStart } from '../../lib/format.js';
+import { downloadCsv } from '../../lib/csv.js';
 
 const GROUPS = [
   ['ADMIN', 'Admin'],
@@ -15,7 +16,7 @@ const GROUPS = [
 /** Everyone can see who gave the minimum weekly donation; officers and the admin set it. */
 export default function WeeklyDonations() {
   useTitle('Weekly donations');
-  const { hasRole } = useAuth();
+  const { user, hasRole } = useAuth();
   const canEdit = hasRole('OFFICER');
   const thisWeek = isoWeekStart();
   const [week, setWeek] = useState(thisWeek);
@@ -48,7 +49,12 @@ export default function WeeklyDonations() {
           <span className="text-sm">Week of <strong>{fmtDate(week)}</strong></span>
           <button type="button" className="btn-ghost px-2" aria-label="Next week" disabled={week >= thisWeek} onClick={() => setWeek(addDays(week, 7))}>→</button>
         </div>
-        {data && <p className="text-sm text-muted">{data.metCount} of {people.length} gave the minimum</p>}
+        {data && (
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-muted">{data.metCount} of {people.length} gave the minimum</p>
+            <button type="button" className="btn-outline px-3 py-1 text-sm" onClick={() => downloadCsv(`weekly-donations-${week}.csv`, [['Player', 'Role', 'Gave minimum'], ...people.map((p) => [p.inGameName, p.role, p.met ? 'Yes' : 'No'])])}>Download CSV</button>
+          </div>
+        )}
       </div>
 
       {loading && !data && <SkeletonBlock rows={6} />}
@@ -79,6 +85,9 @@ export default function WeeklyDonations() {
                           <td className="td"><Badge value={p.met ? 'Donated' : 'Not donated'} tone={p.met ? 'gold' : 'muted'} /></td>
                           {canEdit && (
                             <td className="td text-right">
+                              {p.id === user.id && user.role !== 'ADMIN' ? (
+                                <span className="text-xs text-muted">Another officer or the admin sets yours</span>
+                              ) : (
                               <button
                                 type="button"
                                 className={p.met ? 'btn-outline px-3 py-1' : 'btn-gold px-3 py-1'}
@@ -87,6 +96,7 @@ export default function WeeklyDonations() {
                               >
                                 {p.met ? 'Mark not donated' : 'Mark donated'}
                               </button>
+                              )}
                             </td>
                           )}
                         </tr>

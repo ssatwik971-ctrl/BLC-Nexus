@@ -45,7 +45,6 @@ export default function Roster() {
               <tr className="border-b border-line">
                 <th className="th" scope="col">Member</th>
                 <th className="th" scope="col">Role</th>
-                <th className="th" scope="col">Offices this week</th>
                 <th className="th" scope="col">Timezone</th>
                 <th className="th" scope="col">Joined</th>
               </tr>
@@ -66,7 +65,6 @@ export default function Roster() {
                     </div>
                   </td>
                   <td className="td"><Badge value={m.role} tone={m.role === 'MEMBER' ? 'muted' : 'gold'} /></td>
-                  <td className="td text-muted">{m.offices.length ? m.offices.join(', ') : '—'}</td>
                   <td className="td text-muted">{m.timezone || '—'}</td>
                   <td className="td text-muted">{fmtDate(m.joinedAt)}</td>
                 </tr>

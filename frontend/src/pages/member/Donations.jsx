@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../lib/api.js';
 import { useAuth } from '../../lib/auth.jsx';
 import { useFetch, useTitle } from '../../lib/hooks.js';
 import { fmtDate, fmtNumber } from '../../lib/format.js';
+import { downloadCsv } from '../../lib/csv.js';
 
 const todayInput = () => new Date().toISOString().slice(0, 10);
 
@@ -82,11 +83,16 @@ function DonationSection({ type, officer, members }) {
           <h2 id={`${id}-h`} className="font-display text-xl font-bold">{cfg.title}</h2>
           <p className="text-sm text-muted">{cfg.hint}</p>
         </div>
-        {officer && (
-          <button type="button" className="btn-gold" onClick={() => setOpen(true)}>
-            Record {cfg.unit} donation
+        <div className="flex gap-2">
+          <button type="button" className="btn-outline" disabled={!donations.length} onClick={() => downloadCsv(`${id}-donations.csv`, [['Member', 'Amount', 'Date', 'Note'], ...donations.map((d) => [d.user?.inGameName || '', d.amount, String(d.donatedAt).slice(0, 10), d.note || ''])])}>
+            Download CSV
           </button>
-        )}
+          {officer && (
+            <button type="button" className="btn-gold" onClick={() => setOpen(true)}>
+              Record {cfg.unit} donation
+            </button>
+          )}
+        </div>
       </div>
 
       {list.error && <ErrorNote error={list.error} retry={reload} />}

@@ -68,7 +68,7 @@ There are **no demo or seeded accounts**. The single admin account is defined by
 | `ADMIN_NAME` | Optional display name (default `BLC Admin`) |
 | `ADMIN_SESSION_HOURS` | Optional session length (default `12`) |
 
-Open `/admin-login` (there is a link under the normal login form), enter that email and PIN, and the admin account unlocks. If either variable is missing, or the PIN is shorter than 6 characters, admin sign-in is switched off. Changing `ADMIN_PIN` (or `ADMIN_EMAIL`) and redeploying signs every existing admin session out. After 5 wrong attempts from one address (or 20 from all addresses) admin sign-in pauses for 15 minutes; failures show up in the Action Log.
+Open `/admin-login` (there is a link under the normal login form), enter that email and PIN, and the admin account unlocks. If either variable is missing, or the PIN is shorter than 6 characters, admin sign-in is switched off. Changing `ADMIN_PIN` (or `ADMIN_EMAIL`) and redeploying signs every existing admin session out. After 5 wrong attempts from one address (or 200 from all addresses) admin sign-in pauses for 15 minutes; the admin can also sign out on all devices from the Profile page; failures show up in the Action Log.
 
 The admin cannot be created, edited or removed through the app or Netlify Identity, and nobody else can be given the admin role.
 
@@ -84,7 +84,7 @@ Covers authentication (login, suspended accounts, token tampering, reset anti-en
 
 **Public:** home with live cooperative stats and top members, About (mission, rules, offices, maintenance/donation explainer, disclaimer), recruitment form with private status link, public leaderboard (activity + donations), contact form.
 
-**Members:** dashboard, roster with privacy controls, weekly maintenance totals (cash and coins, entered by the admin at the end of each week), separate cash and coin donation sections (coop's total balance after maintenance, total donated, your total, top donors, history), a weekly donation status page (who gave the minimum donation; officers and the admin update it, everyone sees it), strategy forums (threads, replies, upvotes, pin/lock) and wiki, one-vote-per-member governance, role-gated document vault, performance charts, profile with notification preferences and contribution history.
+**Members:** dashboard, roster with privacy controls, weekly maintenance totals (cash and coins, entered by the admin at the end of each week), separate cash and coin donation sections (coop's total balance after maintenance, total donated, your total, top donors, history), a weekly donation status page (who gave the minimum donation; officers and the admin update it, officers cannot mark themselves, everyone sees it), CSV downloads for donations, maintenance totals and weekly status, strategy forums (threads, replies, upvotes, pin/lock) and wiki, one-vote-per-member governance, role-gated document vault, performance charts, profile with notification preferences and contribution history.
 
 **Management:** application review and role changes (admin only), member management (suspend, remove), editable home/about/stats/rules, manual leaderboard entry, forum categories, performance snapshots, offices, maintenance, donations, votes, documents, wiki and an action log. **Only the admin** approves applications, invites members and makes a member an officer (the admin is the only person with the Netlify account that sends invitations). **Officers do all the rest.**
 
@@ -95,7 +95,7 @@ Covers authentication (login, suspended accounts, token tampering, reset anti-en
 | Public visitor | — | Home, About, Leaderboard, Apply, Contact |
 | Applicant | Submits the form | Check status via private token link only |
 | Member | Application approved by the admin (or admin invite) | Everything in the member area; mark own maintenance paid; vote; post |
-| Officer | Made an officer **by the admin only** | + offices, record cash/coin donations, set the weekly minimum-donation status, wiki, forum moderation and categories, votes, document vault, site settings, leaderboard, performance snapshots, action log, suspend/remove regular members |
+| Officer | Made an officer **by the admin only** | + offices, record cash/coin donations, set the weekly minimum-donation status, wiki, forum moderation and categories, votes, document vault, site settings, leaderboard, performance snapshots, action log, suspend regular members (a member with recorded donations cannot be deleted) |
 | Admin | `ADMIN_EMAIL` + `ADMIN_PIN` (Netlify environment variables) | + review/approve applications, invite members, make members officers, manage officers, admin-only documents |
 
 ## Security notes

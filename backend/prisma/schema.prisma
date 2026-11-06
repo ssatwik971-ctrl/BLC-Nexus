@@ -153,7 +153,8 @@ model Donation {
   recordedById String?
   createdAt    DateTime     @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Restrict: a member with donations cannot be deleted, so the coop balance never changes by accident.
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([type, userId])
   @@index([donatedAt])
