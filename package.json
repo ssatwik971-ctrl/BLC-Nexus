@@ -9,11 +9,11 @@
   "scripts": {
     "build": "npm run build --workspace frontend",
     "prebuild": "npm run prisma:generate --workspace backend",
-    "dev": "netlify dev",
-    "db:init": "netlify database init",
-    "db:status": "netlify database status",
-    "db:connect": "netlify database connect",
-    "db:migrations:apply": "netlify database migrations apply",
+    "dev": "npx netlify-cli dev",
+    "db:init": "npx netlify-cli database init",
+    "db:status": "npx netlify-cli database status",
+    "db:connect": "npx netlify-cli database connect",
+    "db:migrations:apply": "npx netlify-cli database migrations apply",
     "prisma:generate": "npm run prisma:generate --workspace backend",
     "db:generate-sql": "npm run db:generate-sql --workspace backend",
     "test": "npm test --workspace backend"
@@ -24,9 +24,6 @@
     "serverless-http": "^3.2.0",
     "@netlify/identity": "^2.0.0",
     "@netlify/aws-lambda-compat": "^2.0.3"
-  },
-  "devDependencies": {
-    "netlify-cli": "^26.0.2"
   },
   "engines": {
     "node": ">=20.12.2"
