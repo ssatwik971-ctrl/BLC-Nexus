@@ -1,4 +1,3 @@
-import sanitizeHtml from 'sanitize-html';
 import { z } from 'zod';
 
 export class HttpError extends Error {
@@ -30,11 +29,28 @@ const ENTITIES = [
 ];
 
 /**
+ * Dependency-free HTML tag stripper (replaces sanitize-html, whose ESM-only
+ * htmlparser2 dependency crashed the Netlify Function with ERR_REQUIRE_ESM).
+ */
+function stripTags(input) {
+  let s = input;
+  let prev;
+  do {
+    prev = s;
+    s = s
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<(script|style|textarea|option)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+      .replace(/<\/?[a-zA-Z!?][^>]*>/g, '');
+  } while (s !== prev);
+  return s;
+}
+
+/**
  * Strip all HTML tags/attributes and control characters from user text.
  * Content is stored as plain text and always rendered escaped (React / esc()).
  */
 export function clean(value) {
-  let s = sanitizeHtml(String(value ?? ''), { allowedTags: [], allowedAttributes: {} });
+  let s = stripTags(String(value ?? ''));
   for (const [entity, char] of ENTITIES) s = s.split(entity).join(char);
   return s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim();
 }
