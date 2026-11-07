@@ -25,7 +25,7 @@ const memberNav = [
 const manageNav = [
   { to: '/app/admin/members', label: 'Members' },
   { to: '/app/admin/resources', label: 'Content' },
-  { to: '/app/admin/site', label: 'Site & Leaderboard' },
+  { to: '/app/admin/site', label: 'Site content' },
   { to: '/app/admin/logs', label: 'Action Log' },
 ];
 

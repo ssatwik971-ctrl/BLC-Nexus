@@ -26,7 +26,8 @@ export default function Home() {
   const board = useFetch('/public/leaderboard');
   const settings = site.data?.settings;
   const stats = settings?.stats || {};
-  const top = (board.data?.activity || []).slice(0, 5);
+  const topCash = (board.data?.cash || []).slice(0, 5);
+  const topCoins = (board.data?.coins || []).slice(0, 5);
 
   return (
     <>
@@ -69,21 +70,26 @@ export default function Home() {
 
       <section className="mx-auto max-w-6xl px-4 pb-12" aria-labelledby="top-h">
         <div className="mb-5 flex items-end justify-between">
-          <h2 id="top-h" className="font-display text-xl font-bold tracking-wide text-gold">Top members</h2>
+          <h2 id="top-h" className="font-display text-xl font-bold tracking-wide text-gold">Top donors</h2>
           <Link to="/leaderboard" className="text-sm text-gold underline">Full leaderboard</Link>
         </div>
-        <Card>
-          {board.loading && <Skeleton className="h-24 w-full" />}
-          {!board.loading && top.length === 0 && <p className="text-sm text-muted">The leaderboard has not been published yet.</p>}
-          <ol className="divide-y divide-line">
-            {top.map((e) => (
-              <li key={e.id} className="flex items-center justify-between py-2 text-sm">
-                <span><span className="mr-3 inline-block w-6 font-bold text-gold">#{e.rank}</span>{e.name}</span>
-                <span className="text-muted">{fmtNumber(e.score)}</span>
-              </li>
-            ))}
-          </ol>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2">
+          {[['Cash', topCash], ['Coins', topCoins]].map(([label, list]) => (
+            <Card key={label}>
+              <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gold-soft">{label}</h3>
+              {board.loading && <Skeleton className="h-24 w-full" />}
+              {!board.loading && list.length === 0 && <p className="text-sm text-muted">No donations recorded yet.</p>}
+              <ol className="divide-y divide-line">
+                {list.map((e) => (
+                  <li key={`${e.rank}-${e.name}`} className="flex items-center justify-between py-2 text-sm">
+                    <span><span className="mr-3 inline-block w-6 font-bold text-gold">#{e.rank}</span>{e.name}</span>
+                    <span className="text-muted">{fmtNumber(e.score)}</span>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          ))}
+        </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pb-16" aria-labelledby="feat-h">

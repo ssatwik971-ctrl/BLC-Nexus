@@ -55,11 +55,24 @@ export default function publicRoutes(ctx, limiters) {
   r.get(
     '/public/leaderboard',
     ah(async (_req, res) => {
-      const rows = await prisma.leaderboardEntry.findMany({ orderBy: [{ kind: 'asc' }, { rank: 'asc' }] });
-      res.json({
-        activity: rows.filter((e) => e.kind === 'ACTIVITY'),
-        donation: rows.filter((e) => e.kind === 'DONATION'),
-      });
+      // Built automatically from the donations officers record: top 10 ACTIVE donors per type.
+      const board = async (type) => {
+        const grouped = await prisma.donation.groupBy({
+          by: ['userId'],
+          where: { type },
+          _sum: { amount: true },
+          orderBy: { _sum: { amount: 'desc' } },
+          take: 30,
+        });
+        const users = await prisma.user.findMany({ where: { id: { in: grouped.map((g) => g.userId) } } });
+        const byId = new Map(users.filter((u) => u.status === 'ACTIVE').map((u) => [u.id, u.inGameName]));
+        return grouped
+          .filter((g) => byId.has(g.userId) && g._sum.amount > 0)
+          .slice(0, 10)
+          .map((g, i) => ({ rank: i + 1, name: byId.get(g.userId), score: g._sum.amount }));
+      };
+      const [cash, coins] = await Promise.all([board('CASH'), board('COINS')]);
+      res.json({ cash, coins });
     }),
   );
 

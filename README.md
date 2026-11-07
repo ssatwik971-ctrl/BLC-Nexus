@@ -82,11 +82,11 @@ Covers authentication (login, suspended accounts, token tampering, reset anti-en
 
 ## Features
 
-**Public:** home with live cooperative stats and top members, About (mission, rules, offices, maintenance/donation explainer, disclaimer), recruitment form with private status link, public leaderboard (activity + donations), contact form.
+**Public:** home with live cooperative stats and top members, About (mission, rules, offices, maintenance/donation explainer, disclaimer), recruitment form with private status link, public leaderboard (top cash and coin donors, calculated automatically from recorded donations), contact form.
 
 **Members:** dashboard, roster with privacy controls, weekly maintenance totals (cash and coins, entered by the admin at the end of each week), separate cash and coin donation sections (coop's total balance after maintenance, total donated, your total, top donors, history), a weekly donation status page (who gave the minimum donation; officers and the admin update it, officers cannot mark themselves, everyone sees it), CSV downloads for donations, maintenance totals and weekly status, strategy forums (threads, replies, upvotes, pin/lock) and wiki, one-vote-per-member governance, role-gated document vault, performance charts, profile with notification preferences and contribution history.
 
-**Management:** application review and role changes (admin only), member management (suspend, remove), editable home/about/stats/rules, manual leaderboard entry, forum categories, performance snapshots, offices, maintenance, donations, votes, documents, wiki and an action log. **Only the admin** approves applications, invites members and makes a member an officer (the admin is the only person with the Netlify account that sends invitations). **Officers do all the rest.**
+**Management:** application review and role changes (admin only), member management (suspend, remove), editable home/about/stats/rules, forum categories, performance snapshots, offices, maintenance, donations, votes, documents, wiki and an action log. **Only the admin** approves applications, invites members and makes a member an officer (the admin is the only person with the Netlify account that sends invitations). **Officers do all the rest.**
 
 ### User roles
 
@@ -95,7 +95,7 @@ Covers authentication (login, suspended accounts, token tampering, reset anti-en
 | Public visitor | — | Home, About, Leaderboard, Apply, Contact |
 | Applicant | Submits the form | Check status via private token link only |
 | Member | Application approved by the admin (or admin invite) | Everything in the member area; mark own maintenance paid; vote; post |
-| Officer | Made an officer **by the admin only** | + offices, record cash/coin donations, set the weekly minimum-donation status, wiki, forum moderation and categories, votes, document vault, site settings, leaderboard, performance snapshots, action log, suspend regular members (a member with recorded donations cannot be deleted) |
+| Officer | Made an officer **by the admin only** | + offices, record cash/coin donations, set the weekly minimum-donation status, wiki, forum moderation and categories, votes, document vault, site settings, performance snapshots, action log, suspend regular members (a member with recorded donations cannot be deleted) |
 | Admin | `ADMIN_EMAIL` + `ADMIN_PIN` (Netlify environment variables) | + review/approve applications, invite members, make members officers, manage officers, admin-only documents |
 
 ## Security notes
@@ -115,7 +115,7 @@ Covers authentication (login, suspended accounts, token tampering, reset anti-en
 Honest notes on what this version does **not** do, so nothing surprises you:
 
 - **Not run end-to-end where it was written.** The code was authored in a sandbox with no access to the npm registry, so `npm install`, the test suite, the Vite build and a real Postgres run were **not executed**. The backend passes a Node syntax check and the frontend parses and resolves all imports (esbuild), but expect to fix small issues on first run. Run `npm test` first.
-- **No Ticarium API integration.** There is no known public API, so power, rank and leaderboards are entered manually by admins (as the spec allows).
+- **No Ticarium API integration.** There is no known public API, so power and rank are entered manually by the admin (the public donor leaderboard is automatic) (as the spec allows).
 - **No committed SQL migrations.** `prisma db push` creates the schema; run `npx prisma migrate dev --name init` once to generate versioned migrations (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 - **MFA is not implemented** (marked optional). Admin accounts should use strong unique passwords.
 - **Netlify Identity is required for the Netlify deployment.** The browser does not persist bearer tokens; Identity manages its session cookies. The standalone legacy backend retains JWT authentication.

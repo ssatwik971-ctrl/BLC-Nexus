@@ -47,7 +47,7 @@ HTTPS is enforced automatically in production (HTTP requests are redirected; Rai
 
 Set `ADMIN_EMAIL` and `ADMIN_PIN` in the environment, redeploy, then open `/admin-login` and unlock the admin account with that email and PIN (see the README). Then:
 
-1. Admin → **Site & Leaderboard**: set headline, stats, rules, recruitment on/off.
+1. Admin → **Site content**: set headline, stats, rules, recruitment on/off.
 2. Update the six offices (Maintenance page) with your real levels and weekly costs.
 3. Invite your members (Admin → Members → Invite member) and make your officers officers; only the admin can do this.
 

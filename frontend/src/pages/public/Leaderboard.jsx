@@ -20,7 +20,7 @@ function Board({ title, entries, scoreLabel }) {
           </thead>
           <tbody>
             {entries.map((e) => (
-              <tr key={e.id} className="border-b border-line/60">
+              <tr key={`${e.rank}-${e.name}`} className="border-b border-line/60">
                 <td className="td font-bold text-gold">#{e.rank}</td>
                 <td className="td">{e.name}</td>
                 <td className="td text-right">{fmtNumber(e.score)}</td>
@@ -38,13 +38,13 @@ export default function Leaderboard() {
   const { data, error, loading, reload } = useFetch('/public/leaderboard');
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <PageHeader title="Public Leaderboard" subtitle="Top BLC members by activity and donations. Updated by BLC officers." />
+      <PageHeader title="Public Leaderboard" subtitle="Top BLC donors by cash and coins. Updated automatically from the donations BLC officers record." />
       {loading && <SkeletonBlock rows={6} />}
       {error && <ErrorNote error={error} retry={reload} />}
       {data && (
         <div className="grid gap-6 lg:grid-cols-2">
-          <Board title="Activity" entries={data.activity} scoreLabel="Contribution score" />
-          <Board title="Donations" entries={data.donation} scoreLabel="Donated" />
+          <Board title="Top cash donors" entries={data.cash || []} scoreLabel="Cash donated" />
+          <Board title="Top coin donors" entries={data.coins || []} scoreLabel="Coins donated" />
         </div>
       )}
     </div>

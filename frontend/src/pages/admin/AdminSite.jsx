@@ -4,28 +4,10 @@ import { Card, ErrorNote, Field, PageHeader, SkeletonBlock } from '../../compone
 import { api, errorMessage } from '../../lib/api.js';
 import { useFetch, useTitle } from '../../lib/hooks.js';
 
-const toLines = (entries) => (entries || []).map((e) => `${e.name}, ${e.score}`).join('\n');
-function parseLines(text) {
-  return text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => {
-      const i = l.lastIndexOf(',');
-      if (i < 1) throw new Error(`Line "${l}" must look like: Name, score`);
-      const score = Number(l.slice(i + 1).trim());
-      if (Number.isNaN(score)) throw new Error(`Score in "${l}" is not a number`);
-      return { name: l.slice(0, i).trim(), score };
-    });
-}
-
 export default function AdminSite() {
-  useTitle('Site & leaderboard');
+  useTitle('Site content');
   const site = useFetch('/public/site');
-  const board = useFetch('/public/leaderboard');
   const [s, setS] = useState(null);
-  const [activity, setActivity] = useState('');
-  const [donation, setDonation] = useState('');
 
   useEffect(() => {
     if (site.data) {
@@ -45,13 +27,6 @@ export default function AdminSite() {
     }
   }, [site.data]);
 
-  useEffect(() => {
-    if (board.data) {
-      setActivity(toLines(board.data.activity));
-      setDonation(toLines(board.data.donation));
-    }
-  }, [board.data]);
-
   const lines = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
 
   const saveSite = async (e) => {
@@ -70,20 +45,9 @@ export default function AdminSite() {
     }
   };
 
-  const saveBoard = async (kind, text) => {
-    try {
-      const entries = parseLines(text);
-      await api.put(`/admin/leaderboard/${kind}`, { entries });
-      toast.success(`${kind === 'activity' ? 'Activity' : 'Donation'} leaderboard saved`);
-      board.reload();
-    } catch (err) {
-      toast.error(err.status ? errorMessage(err) : err.message);
-    }
-  };
-
   return (
     <>
-      <PageHeader title="Site content & leaderboard" subtitle="Edit public pages, cooperative stats and the public leaderboard. No code needed." />
+      <PageHeader title="Site content" subtitle="Edit public pages and cooperative stats. The public leaderboard fills itself from recorded donations." />
       {(site.loading || !s) && !site.error && <SkeletonBlock rows={8} />}
       {site.error && <ErrorNote error={site.error} retry={site.reload} />}
 
@@ -115,18 +79,6 @@ export default function AdminSite() {
           <button type="submit" className="btn-gold">Save site content</button>
         </form>
       )}
-
-      <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        {[['activity', 'Activity leaderboard', activity, setActivity], ['donation', 'Donation leaderboard', donation, setDonation]].map(([kind, title, value, setter]) => (
-          <Card key={kind} className="space-y-3">
-            <h2 className="font-display text-lg font-bold tracking-wide text-gold-soft">{title}</h2>
-            <Field label="One entry per line: Name, score" htmlFor={`lb-${kind}`} hint="Ranks are assigned automatically by score (highest first). Saving replaces the list.">
-              <textarea id={`lb-${kind}`} className="input min-h-[180px] font-mono" value={value} onChange={(e) => setter(e.target.value)} />
-            </Field>
-            <button type="button" className="btn-gold" onClick={() => saveBoard(kind, value)}>Save {kind} leaderboard</button>
-          </Card>
-        ))}
-      </div>
     </>
   );
 }

@@ -214,27 +214,7 @@ export default function adminRoutes(ctx, auth) {
     }),
   );
 
-  // ---------- Public leaderboard (manual entry) ----------
-  r.put(
-    '/leaderboard/:kind',
-    ah(async (req, res) => {
-      const kind = String(req.params.kind).toUpperCase();
-      if (!['ACTIVITY', 'DONATION'].includes(kind)) throw new HttpError(400, 'kind must be activity or donation');
-      const { entries } = parse(
-        z.object({ entries: z.array(z.object({ name: text(60, 1), score: z.coerce.number().min(0) })).max(100) }),
-        req.body,
-      );
-      const sorted = [...entries].sort((a, b) => b.score - a.score);
-      await prisma.$transaction([
-        prisma.leaderboardEntry.deleteMany({ where: { kind } }),
-        prisma.leaderboardEntry.createMany({
-          data: sorted.map((e, i) => ({ kind, name: e.name, score: e.score, rank: i + 1 })),
-        }),
-      ]);
-      await logAction(ctx, req, 'leaderboard.update', { kind, count: sorted.length });
-      res.json({ ok: true, count: sorted.length });
-    }),
-  );
+  // (The public leaderboard is calculated from recorded donations — see GET /public/leaderboard.)
 
   // ---------- Action log ----------
   r.get(

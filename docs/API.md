@@ -14,7 +14,7 @@ Applicants have no account; they use a private status token.
 |---|---|---|
 | GET | `/health` | Liveness probe |
 | GET | `/public/site` | Site name, tagline, editable settings (home/about/stats/recruiting), member count |
-| GET | `/public/leaderboard` | `{ activity: [], donation: [] }` |
+| GET | `/public/leaderboard` | `{ cash: [], coins: [] }` (top 10 active donors per type, calculated from recorded donations) |
 | POST | `/public/contact` | `{ name, email, message }` — rate limited |
 | POST | `/applications` | Submit an application. Returns `{ id, token, statusUrl }` — rate limited |
 | GET | `/applications/status/:token` | Applicant status check |
@@ -81,7 +81,6 @@ Applicants have no account; they use a private status token.
 | PATCH / DELETE | `/admin/users/:id` | Suspend / reactivate / remove **regular members** (officers and the admin account are protected from officers) |
 | POST | `/admin/users/:id/reset-password` | Sends reset email (or resends invite) |
 | PUT | `/admin/settings/:key` | `key` ∈ `home`, `about`, `stats`, `recruiting`; body `{ value }` |
-| PUT | `/admin/leaderboard/:kind` | `kind` ∈ `activity`, `donation`; body `{ entries: [{ name, score }] }` replaces the list |
 | GET | `/admin/logs` | Last 200 admin/officer actions |
 
 ## Admin only
