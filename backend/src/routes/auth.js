@@ -179,7 +179,8 @@ export default function authRoutes(ctx, auth, limiters) {
       try {
         const identityId = req.headers['x-blc-verified-identity-id'];
         const email = String(req.headers['x-blc-verified-identity-email'] || '').toLowerCase();
-        if (!identityId || !email || req.headers['x-blc-verified-identity-confirmed'] !== 'true') throw new HttpError(401, 'Use a confirmed Netlify Identity account first');
+        if (!identityId || !email) throw new HttpError(401, 'The server could not see your Netlify Identity session. Log out, reload the page, and sign in again.');
+        if (req.headers['x-blc-verified-identity-confirmed'] !== 'true') throw new HttpError(401, 'Use a confirmed Netlify Identity account first');
         const target = await prisma.user.findUnique({ where: { email } });
         const confirmed = req.headers['x-blc-verified-identity-confirmed'] === 'true';
         if (target && (target.role === 'ADMIN' || target.email === config.adminEmail)) throw new HttpError(403, 'The admin account signs in with its PIN, not Netlify Identity');

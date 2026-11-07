@@ -39,7 +39,11 @@ export default withLambda(async (event, context) => {
     }
     if (identityUser?.id) headers['x-blc-verified-identity-id'] = identityUser.id;
     if (identityUser?.email) headers['x-blc-verified-identity-email'] = identityUser.email.toLowerCase();
-    if (identityUser?.confirmedAt) headers['x-blc-verified-identity-confirmed'] = 'true';
+    // A session only exists after a successful Identity login, and Identity refuses to log in
+    // an unconfirmed account. So a user returned by getUser() is confirmed. Do not depend on a
+    // single field name (confirmedAt vs confirmed_at vs emailConfirmedAt): a missing field made
+    // every confirmed member fail with "Use a confirmed Netlify Identity account first".
+    if (identityUser?.id) headers['x-blc-verified-identity-confirmed'] = 'true';
     // Netlify may hand the function the rewritten path; Express routes are mounted at /api/*.
     const path = String(event.path || '').replace(/^\/\.netlify\/functions\/api(?=\/|$)/, '/api');
     const trustedEvent = { ...event, path, headers };
