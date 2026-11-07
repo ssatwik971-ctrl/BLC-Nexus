@@ -48,6 +48,17 @@ mode. Never print or commit the connection string.
 - Never commit `.env`, database URLs, SMTP credentials, or JWT secrets.
 - There are no sample admin credentials. Set `ADMIN_EMAIL` and a strong `ADMIN_PIN` (8+ characters) in the Netlify environment variables (scope them to Functions) before using the site.
 
+### Required Netlify environment variables
+
+Set these two in Site configuration → Environment variables (scope: Functions), then redeploy:
+
+| Variable | Value |
+| --- | --- |
+| `ADMIN_EMAIL` | Email used to unlock the admin account at `/admin-login` |
+| `ADMIN_PIN` | Admin PIN or passphrase (at least 6 characters, 8+ recommended) |
+
+`NETLIFY_DB_URL` is provided automatically by Netlify Database.
+
 
 ## Phase 2: Netlify Identity
 See [NETLIFY-IDENTITY-PHASE2.md](./NETLIFY-IDENTITY-PHASE2.md). Identity configuration is dashboard-only. Enable it on a Deploy Preview, choose Invite only, and test all roles before production cutover.
