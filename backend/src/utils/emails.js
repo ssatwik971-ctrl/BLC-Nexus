@@ -13,7 +13,22 @@ export const inviteEmail = (config, user, token) => {
   };
 };
 
-export const resetEmail = (config, user, token) => {
+/**
+ * Netlify Identity mode: the member row already exists (status INVITED). The person
+ * creates their own Identity account with this exact email; Netlify then sends its
+ * own confirmation email, and the first login links the account to the approved row.
+ */
+export const approvedSignupEmail = (config, user) => {
+  const link = `${config.frontendUrl}/signup?email=${encodeURIComponent(user.email)}`;
+  return {
+    subject: 'Welcome to the Billionaires Club',
+    title: `Welcome, ${user.inGameName}`,
+    html: `<p>Your BLC application was approved. Create your account with <strong>${esc(user.email)}</strong> (this exact email), then confirm it from the email Netlify sends you.</p>${button(link, 'Create your account')}<p style="font-size:12px;color:#8a8aa0;">Use the same email address you applied with, otherwise your account cannot be linked to your membership.</p>`,
+    text: `Your BLC application was approved. Create your account with ${user.email} (this exact email): ${link} — then confirm it from the email Netlify sends you.`,
+  };
+};
+
+export const resetEmail =(config, user, token) => {
   const link = `${config.frontendUrl}/reset-password?token=${token}`;
   return {
     subject: 'Reset your password',

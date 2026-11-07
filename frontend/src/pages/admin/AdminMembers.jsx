@@ -32,7 +32,7 @@ export default function AdminMembers() {
       await api.post('/admin/users', form);
       setOpen(false);
       setForm({ email: '', inGameName: '', role: 'MEMBER' });
-    }, 'Member record created. Send the Identity invitation from Netlify → Identity → Users.');
+    }, 'Member record created. An email with a signup link was sent.');
     setBusy(false);
   };
 
@@ -41,7 +41,7 @@ export default function AdminMembers() {
       <PageHeader
         title="Members"
         subtitle={isAdmin
-          ? 'Make members officers and manage access. Invitations and password recovery are sent from Netlify Identity.'
+          ? 'Make members officers and manage access. Approved members get an email with a signup link; Netlify sends the confirmation and password-reset emails.'
           : 'Suspend or remove regular members. Only the admin can make someone an officer or invite new members.'}
         actions={isAdmin && <button type="button" className="btn-gold" onClick={() => setOpen(true)}>Invite member</button>}
       />
@@ -83,7 +83,7 @@ export default function AdminMembers() {
                     <td className="td"><Badge value={u.status} /></td>
                     <td className="td text-muted">{fmtDate(u.joinedAt)}</td>
                     <td className="td whitespace-nowrap text-right">
-                      {canManage && <button type="button" className="btn-ghost px-2 py-1" onClick={() => act(() => api.post(`/admin/users/${u.id}/reset-password`), 'Use Netlify Identity → Users to send an invite or password recovery email.')}>{u.status === 'INVITED' ? 'Identity invite' : 'Identity recovery'}</button>}
+                      {canManage && <button type="button" className="btn-ghost px-2 py-1" onClick={() => act(() => api.post(`/admin/users/${u.id}/reset-password`), u.status === 'INVITED' ? 'Signup email sent again.' : 'Ask the member to use “Forgot password?” on the login page.')}>{u.status === 'INVITED' ? 'Resend signup email' : 'Password help'}</button>}
                       {canManage && u.status === 'ACTIVE' && <button type="button" className="btn-outline ml-1 px-2 py-1" onClick={() => act(() => api.patch(`/admin/users/${u.id}`, { status: 'SUSPENDED' }), 'Suspended')}>Suspend</button>}
                       {canManage && u.status === 'SUSPENDED' && <button type="button" className="btn-outline ml-1 px-2 py-1" onClick={() => act(() => api.patch(`/admin/users/${u.id}`, { status: 'ACTIVE' }), 'Reactivated')}>Reactivate</button>}
                       {canManage && <button type="button" className="btn-danger ml-1 px-2 py-1" onClick={() => window.confirm(`Remove ${u.inGameName}? This deletes their account.`) && act(() => api.del(`/admin/users/${u.id}`), 'Member removed')}>Remove</button>}

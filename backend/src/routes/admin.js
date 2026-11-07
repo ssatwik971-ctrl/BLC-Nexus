@@ -171,7 +171,13 @@ export default function adminRoutes(ctx, auth) {
       if (!target) throw new HttpError(404, 'Member not found');
       assertCanManage(req.user, target);
       if (ctx.identityMode) {
-        // Identity recovery/invitations are sent from the Netlify Identity dashboard.
+        // Pending members get the signup email again. Password recovery for active
+        // members is done by the member through "Forgot password?" (Netlify sends it).
+        if (target.status === 'INVITED') {
+          await sendInvite(ctx, target);
+          await logAction(ctx, req, 'user.resend-signup-email', { userId: target.id });
+          return res.json({ ok: true });
+        }
         await logAction(ctx, req, 'user.identity-email-required', { userId: target.id });
         return res.json({ ok: true, identityDashboardRequired: true });
       }

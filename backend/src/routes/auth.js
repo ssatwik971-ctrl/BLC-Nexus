@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { HttpError, ah, parse, publicUser } from '../utils/http.js';
 import { newToken, sha256, safeEqual } from '../utils/security.js';
-import { inviteEmail, resetEmail } from '../utils/emails.js';
+import { inviteEmail, resetEmail, approvedSignupEmail } from '../utils/emails.js';
 import { adminConfigured, ensureAdminUser, startAdminSession, endAdminSession } from '../utils/adminSession.js';
 import { logAction } from '../utils/notify.js';
 
@@ -216,8 +216,11 @@ export default function authRoutes(ctx, auth, limiters) {
 /** Create an invite token for a user and email it. Shared with admin routes. */
 export async function sendInvite(ctx, user) {
   if (ctx.identityMode) {
-    // Netlify Identity invitations are sent from Project configuration > Identity > Users.
-    // Do not send the obsolete password-reset/JWT invite email in Identity mode.
+    // Identity mode: no invite token. Email the approved person a link to the signup page.
+    // Access stays gated by the database row (POST /auth/identity/link only links a
+    // confirmed Identity email that matches an approved member). Never throws; without
+    // SMTP the email is only written to the function log.
+    await ctx.mailer.send({ to: user.email, ...approvedSignupEmail(ctx.config, user) });
     return null;
   }
   const token = newToken();

@@ -20,7 +20,7 @@ export default function AdminApplications() {
     setBusy(true);
     try {
       await api.patch(`/admin/applications/${deciding.app.id}`, { status: deciding.status, note: note || null });
-      toast.success(deciding.status === 'APPROVED' ? 'Approved. Send the Identity invitation from Netlify → Identity → Users.' : 'Updated');
+      toast.success(deciding.status === 'APPROVED' ? 'Approved. An email with a signup link was sent to the applicant.' : 'Updated');
       setDeciding(null);
       setNote('');
       reload();

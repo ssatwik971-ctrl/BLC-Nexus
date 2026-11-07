@@ -18,8 +18,8 @@ This is the consolidated source package for the Netlify migration. It is not a c
 3. Generate the initial SQL baseline with `npm run db:generate-sql`. Review the generated `netlify/database/migrations/202611010001_initial_schema.sql`; it is intentionally not fabricated in this package because Prisma CLI could not be installed in the build environment.
 4. Confirm the baseline includes the `netlifyIdentityId` column and unique index. If not, adjust the baseline so it represents the complete current `schema.prisma` before applying migrations. Do not apply the separate identity-link migration twice if the baseline already includes that column; the provided migration uses `IF NOT EXISTS` and is safe after the baseline.
 5. Create a disposable Netlify Database and apply migrations with the Netlify CLI. Verify the schema before using any real member data.
-6. Enable Netlify Identity in the Netlify project and set Registration preferences to **Invite only**.
-7. Enable Netlify Blobs and set `FRONTEND_URL`. Configure SMTP variables only if the app's application-decision/operational mailer is required.
+6. Enable Netlify Identity in the Netlify project, set Registration preferences to **Open**, and leave email confirmation on (no auto-confirm). Access is gated by the approved BLC member row, not by Identity.
+7. Enable Netlify Blobs and set `FRONTEND_URL`. Configure the SMTP variables: they are now required for the "you're approved, create your account" email and for decision emails.
 8. Deploy a Deploy Preview and test every flow below.
 
 ## Deploy Preview test matrix
@@ -30,7 +30,11 @@ This is the consolidated source package for the Netlify migration. It is not a c
 - An already-linked member cannot be linked to a second Identity subject.
 - Suspended users are denied even if their Identity session is valid.
 - MEMBER / OFFICER / ADMIN permissions are enforced by the API, not just the UI.
-- Invite acceptance and password recovery callbacks complete successfully.
+- Approving an application emails the applicant a `/signup?email=…` link; signing up with that email, confirming it, and signing in activates the member.
+- Signing up with an email that was never approved: confirmation works, but the member area stays closed (403 from `/auth/identity/link`).
+- Signing up with the admin email does not grant admin access.
+- Password recovery callbacks complete successfully.
+- Typing in the leaderboard, donation, vote, forum and member dialogs keeps focus in the field (no jump to the ✕ button).
 - Admin document upload, role-visible download, metadata update, and deletion work.
 - Non-admin upload/delete attempts are rejected; hidden documents return 404.
 - Preview Blob writes do not affect production Blob storage.
@@ -38,7 +42,7 @@ This is the consolidated source package for the Netlify migration. It is not a c
 
 ## Known operational limitation
 
-The `@netlify/identity` admin SDK provides server-side user management, but its documented operations do not include sending an invitation email. Admin-created BLC member records must therefore be paired with an invitation sent from Netlify Project configuration → Identity → Users. The UI explicitly tells administrators to do this; it must not claim that an invitation was sent automatically.
+The `@netlify/identity` admin SDK provides server-side user management, but its documented operations do not include sending an invitation email. BLC Nexus therefore sends its own "you're approved, create your account" email through SMTP when an application is approved or a member is created, and Netlify sends the account confirmation and password-recovery emails. If SMTP is not configured the approval email is only written to the function log, and the admin should tell the person to use `/signup` with their approved email.
 
 ## Migration / cutover safety
 

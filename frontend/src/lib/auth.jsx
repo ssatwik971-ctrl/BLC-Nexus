@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { getUser, login as identityLogin, logout as identityLogout, handleAuthCallback, requestPasswordRecovery, acceptInvite as identityAcceptInvite, updateUser } from '@netlify/identity';
+import { getUser, login as identityLogin, logout as identityLogout, signup as identitySignup, handleAuthCallback, requestPasswordRecovery, acceptInvite as identityAcceptInvite, updateUser } from '@netlify/identity';
 import { api } from './api.js';
 
 const AuthContext = createContext(null);
@@ -87,6 +87,9 @@ export function AuthProvider({ children }) {
         throw new Error(error?.message || 'Signed in, but your BLC Nexus account could not be synchronized.');
       }
     },
+    // Self-service signup. Netlify emails the confirmation link. Access to the member
+    // area is still decided by the approved BLC member record (see /auth/identity/link).
+    signup: async (email, password) => identitySignup(email, password),
     adminLogin: async (email, pin) => {
       const response = await api.post('/auth/admin-login', { email, pin });
       hint.set();

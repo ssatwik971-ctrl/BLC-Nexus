@@ -55,9 +55,63 @@ export function Login() {
           <Link to="/forgot-password" className="text-gold underline">Forgot password?</Link>
           <Link to="/apply" className="text-muted hover:text-gold">Not a member? Apply</Link>
         </div>
+        <p className="text-center text-sm text-muted">Application approved? <Link to="/signup" className="text-gold underline">Create your account</Link></p>
         <p className="border-t border-line pt-3 text-center text-xs text-muted">
           BLC admin? <Link to="/admin-login" className="text-gold underline">Sign in with your PIN</Link>
         </p>
+      </form>
+    </Shell>
+  );
+}
+
+/** Approved applicants create their Netlify Identity account here (link comes from the approval email). */
+export function Signup() {
+  useTitle('Create your account');
+  const { user, signup } = useAuth();
+  const [params] = useSearchParams();
+  const [email, setEmail] = useState(params.get('email') || '');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  if (user) return <Navigate to="/app" replace />;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (password.length < 10) return setError({ message: 'Use at least 10 characters.' });
+    if (password !== confirm) return setError({ message: 'Passwords do not match.' });
+    setBusy(true);
+    setError(null);
+    try {
+      await signup(email.trim(), password);
+      setDone(true);
+    } catch (err) {
+      setError({ message: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <Shell title="Check your email">
+        <p className="text-sm text-muted">We sent a confirmation link to <strong className="text-gold-soft">{email}</strong>. Open it to confirm your account, then sign in. Only emails of approved BLC members can enter the member area.</p>
+        <p className="mt-4 text-center text-sm"><Link to="/login" className="text-gold underline">Go to member login</Link></p>
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell title="Create your account">
+      <form onSubmit={submit} className="space-y-4">
+        {error && <ErrorNote error={error} />}
+        <Field label="Email" htmlFor="s-email" hint="Use the exact email from your approved application."><input id="s-email" type="email" autoComplete="email" className="input" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+        <Field label="Password" htmlFor="s-pw" hint="At least 10 characters."><input id="s-pw" type="password" autoComplete="new-password" minLength={10} className="input" required value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+        <Field label="Confirm password" htmlFor="s-conf"><input id="s-conf" type="password" autoComplete="new-password" minLength={10} className="input" required value={confirm} onChange={(e) => setConfirm(e.target.value)} /></Field>
+        <button type="submit" className="btn-gold w-full" disabled={busy}>{busy ? 'Creating…' : 'Create account'}</button>
+        <p className="text-center text-sm"><Link to="/login" className="text-muted hover:text-gold">Already have an account? Sign in</Link></p>
       </form>
     </Shell>
   );

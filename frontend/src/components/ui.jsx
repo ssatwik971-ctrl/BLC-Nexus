@@ -81,16 +81,26 @@ export function Field({ label, htmlFor, hint, children }) {
 
 export function Modal({ title, onClose, children }) {
   const ref = useRef(null);
+  const bodyRef = useRef(null);
+  // Callers pass an inline `() => setOpen(false)`, which is a new function on every
+  // render. Keep the latest one in a ref so the effect below runs only once, when the
+  // dialog opens. Re-running it on each keystroke used to steal focus after every
+  // letter and send it to the close (✕) button.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     const prev = document.activeElement;
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const onKey = (e) => e.key === 'Escape' && onCloseRef.current();
     document.addEventListener('keydown', onKey);
-    ref.current?.querySelector('input,select,textarea,button')?.focus();
+    // Focus the first form field in the dialog body (not the ✕ button in the header).
+    const first = bodyRef.current?.querySelector('input:not([type="hidden"]),select,textarea') || bodyRef.current?.querySelector('button');
+    first?.focus();
     return () => {
       document.removeEventListener('keydown', onKey);
       prev?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm animate-fade-in" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -101,7 +111,7 @@ export function Modal({ title, onClose, children }) {
             ✕
           </button>
         </div>
-        {children}
+        <div ref={bodyRef}>{children}</div>
       </div>
     </div>
   );

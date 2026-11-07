@@ -10,7 +10,7 @@ import Leaderboard from './pages/public/Leaderboard.jsx';
 import Apply from './pages/public/Apply.jsx';
 import ApplicationStatus from './pages/public/ApplicationStatus.jsx';
 import Contact from './pages/public/Contact.jsx';
-import { Login, AdminLogin, ForgotPassword, SetPassword } from './pages/public/AuthPages.jsx';
+import { Login, Signup, AdminLogin, ForgotPassword, SetPassword } from './pages/public/AuthPages.jsx';
 import NotFound from './pages/public/NotFound.jsx';
 
 import Dashboard from './pages/member/Dashboard.jsx';
@@ -58,6 +58,7 @@ export default function App() {
         <Route path="/apply/status/:token" element={<ApplicationStatus />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<SetPassword mode="reset" />} />

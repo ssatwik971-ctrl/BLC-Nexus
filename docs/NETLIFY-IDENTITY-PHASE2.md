@@ -14,9 +14,9 @@
 
 1. Deploy this branch as a **Deploy Preview** first; do not switch production traffic.
 2. In Project configuration → Identity, enable Identity.
-3. Set Registration preferences to **Invite only**. This is essential: the BLC Nexus database is the membership approval source, and open self-registration must not be enabled.
-4. Use Identity → Users to invite each already-approved member. The invitation email is sent by Netlify. Existing custom JWT invitation emails are intentionally disabled in Identity mode.
-5. Existing member records must be `ACTIVE` or `INVITED` in the database. After an invited user accepts their Netlify invitation and confirms the email, the first API call links the verified Identity subject to the matching email and activates the invited database row.
+3. Set Registration preferences to **Open** and keep **email confirmation on** (do not enable auto-confirm). Registration being open is safe because access is decided by the BLC database, not by Identity: `POST /api/auth/identity/link` only links a **confirmed** Identity email that matches an approved member row (`ACTIVE`, or `INVITED` once confirmed). Any other Identity account gets 401/403 and cannot use the member area.
+4. Configure SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`) and `FRONTEND_URL` in the Netlify environment. When the admin approves an application (or creates a member), the API emails the person a link to `/signup?email=…`. Without SMTP that email is only written to the function log.
+5. The person creates their account at `/signup` with the same email, Netlify sends its confirmation email, and after confirming and signing in, the first API call links the verified Identity subject to the matching email and activates the `INVITED` row.
 6. Test member, officer, admin, suspended, unlinked, wrong-email, expired-session, and logout scenarios on the Deploy Preview.
 
 ## Admin account (not Netlify Identity)
@@ -30,7 +30,7 @@ BLC Nexus authorization remains database-backed (`MEMBER`, `OFFICER`, `ADMIN`). 
 ## Important limitations / not yet production-verified
 
 - Netlify Identity dashboard settings cannot be enabled from repository code.
-- The existing admin UI's invite action creates the pending BLC record, but Netlify Identity invitation delivery must currently be completed in Identity → Users. No undocumented Identity API is called.
+- Netlify's documented server-side Identity admin API has no "send invite" operation, so the approval email is sent by BLC Nexus itself (SMTP) and points to the signup page. Open registration means strangers can create unconfirmed or confirmed Identity accounts; they cannot enter the member area, but they will show up in Identity → Users and can be deleted there. The `signup` call from `@netlify/identity` v2 was not verified against the installed version here.
 - Netlify's Identity callbacks and session endpoints do not complete under `netlify dev`; test on a real Deploy Preview.
 - Password reset callback UX, invite acceptance UX, role synchronization, and all API routes must be verified on a Deploy Preview before production cutover.
 - Dependency installation/build/tests and database migration application have not been confirmed in this environment. Do not treat this as a production-ready release.
