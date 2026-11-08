@@ -12,25 +12,26 @@ const OFFICE_NAMES = ['Headquarters', 'Side Job Office', 'Quality Office', 'Ener
 const MAX_LEVEL = { Headquarters: 10, 'Side Job Office': 5, 'Quality Office': 5, 'Energy Office': 5, 'Media Office': 5, 'R&D Office': 3 };
 
 /** Weekly maintenance totals. Everyone can see them; only the admin enters them. */
-function MaintenanceTotals({ admin }) {
+function MaintenanceTotals({ admin, calculatedCash }) {
   const { data, error, loading, reload } = useFetch('/maintenance-expenses');
   // Current coop balances, used to warn the admin before the balance would go negative.
   const cashBal = useFetch(admin ? '/donations?type=CASH' : null);
   const coinBal = useFetch(admin ? '/donations?type=COINS' : null);
   const [form, setForm] = useState({ weekStart: '', cash: '', coins: '', note: '' });
   const [busy, setBusy] = useState(false);
+  // 'ask' = admin has not answered yet, 'confirmed' = calculated cash is right, 'manual' = admin types the cash.
+  const [mode, setMode] = useState('ask');
+  const canConfirm = Number(calculatedCash) > 0;
   const expenses = data?.expenses || [];
   const promptWeek = data?.promptWeek || null;
   const weekValue = form.weekStart || promptWeek || isoWeekStart();
-
-  const latest = expenses[0];
-  const useLast = () => latest && setForm({ ...form, cash: String(latest.cash), coins: String(latest.coins) });
 
   const save = async (e) => {
     e.preventDefault();
     // Entering a week again replaces it, so add that week's old amounts back before comparing.
     const old = expenses.find((x) => String(x.weekStart).slice(0, 10) === weekValue);
-    const cashAfter = (cashBal.data?.balance ?? Infinity) + (old?.cash || 0) - Number(form.cash || 0);
+    const cashToSave = mode === 'confirmed' ? Number(calculatedCash) : Number(form.cash || 0);
+    const cashAfter = (cashBal.data?.balance ?? Infinity) + (old?.cash || 0) - cashToSave;
     const coinsAfter = (coinBal.data?.balance ?? Infinity) + (old?.coins || 0) - Number(form.coins || 0);
     if ((cashAfter < 0 || coinsAfter < 0)
       && !window.confirm('This is more than the coop currently holds, so the balance will go negative. Save anyway?')) return;
@@ -38,12 +39,13 @@ function MaintenanceTotals({ admin }) {
     try {
       await api.put('/maintenance-expenses', {
         weekStart: weekValue,
-        cash: Number(form.cash || 0),
+        cash: mode === 'confirmed' ? Number(calculatedCash) : Number(form.cash || 0),
         coins: Number(form.coins || 0),
         note: form.note || undefined,
       });
       toast.success('Maintenance total saved and deducted from the coop balance');
       setForm({ weekStart: '', cash: '', coins: '', note: '' });
+      setMode('ask');
       reload();
       cashBal.reload();
       coinBal.reload();
@@ -76,39 +78,67 @@ function MaintenanceTotals({ admin }) {
     <section aria-labelledby="mt-h" className="mb-8">
       <h2 id="mt-h" className="mb-1 font-display text-xl font-bold">Weekly maintenance totals</h2>
       <p className="mb-3 text-sm text-muted">
-        The cash and coins the coop paid for maintenance each week. The admin enters these at the end of the week and they are
-        deducted from the coop&apos;s total balance.
+        The cash and coins the coop paid for maintenance each week. At the end of the week the admin confirms the calculated cash
+        (or enters it by hand) and always enters the coins by hand. Both are deducted from the coop&apos;s total balance.
       </p>
 
       {error && <ErrorNote error={error} retry={reload} />}
 
-      {admin && promptWeek && (
-        <div role="status" className="mb-4 rounded-lg border border-gold/50 bg-gold/10 p-3 text-sm">
-          <strong>The week of {fmtDate(promptWeek)} is ending or has ended.</strong> Enter the total maintenance cash and coins below.
-        </div>
-      )}
-
       {admin && (
         <Card className="mb-4">
-          <form onSubmit={save} className="grid gap-4 sm:grid-cols-5">
-            <Field label="Week starting (Monday)" htmlFor="mt-week">
-              <input id="mt-week" type="date" className="input" required value={weekValue} max={isoWeekStart()} onChange={(e) => setForm({ ...form, weekStart: e.target.value })} />
-            </Field>
-            <Field label="Total cash" htmlFor="mt-cash">
-              <input id="mt-cash" type="number" min="0" step="any" required className="input" value={form.cash} onChange={(e) => setForm({ ...form, cash: e.target.value })} />
-            </Field>
-            <Field label="Total coins" htmlFor="mt-coins">
-              <input id="mt-coins" type="number" min="0" step="1" required className="input" value={form.coins} onChange={(e) => setForm({ ...form, coins: e.target.value })} />
-            </Field>
-            <Field label="Note (optional)" htmlFor="mt-note">
-              <input id="mt-note" maxLength={200} className="input" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-            </Field>
-            <div className="flex items-end"><button type="submit" className="btn-gold w-full" disabled={busy}>{busy ? 'Saving…' : 'Save total'}</button></div>
-          </form>
-          {latest && (
-            <button type="button" className="btn-ghost mt-2 px-2 py-1 text-sm" onClick={useLast}>
-              Use the last saved amounts ({fmtNumber(latest.cash)} cash, {fmtNumber(latest.coins)} coins)
-            </button>
+          <Field label="Week starting (Monday)" htmlFor="mt-week">
+            <input id="mt-week" type="date" className="input sm:max-w-xs" required value={weekValue} max={isoWeekStart()} onChange={(e) => { setForm({ ...form, weekStart: e.target.value }); setMode('ask'); }} />
+          </Field>
+          {promptWeek && (
+            <div role="status" className="mt-3 rounded-lg border border-gold/50 bg-gold/10 p-3 text-sm">
+              <strong>The week of {fmtDate(promptWeek)} is ending or has ended.</strong> Please check this week&apos;s maintenance below.
+            </div>
+          )}
+
+          {mode === 'ask' && (
+            <div className="mt-4 rounded-lg border border-line p-4">
+              {canConfirm ? (
+                <>
+                  <p className="text-sm">
+                    The calculated cash maintenance for the week of <strong>{fmtDate(weekValue)}</strong> is{' '}
+                    <strong className="gold-text text-lg">{fmtNumber(calculatedCash)}</strong> ({fmtFull(calculatedCash)}).
+                    Is this right?
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" className="btn-gold" onClick={() => setMode('confirmed')}>Yes, it is right</button>
+                    <button type="button" className="btn-outline" onClick={() => setMode('manual')}>No, I will enter it myself</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm">No coop power has been recorded yet, so the cash maintenance cannot be calculated. Enter it yourself.</p>
+                  <div className="mt-3"><button type="button" className="btn-gold" onClick={() => setMode('manual')}>Enter it manually</button></div>
+                </>
+              )}
+              <p className="mt-3 text-xs text-muted">Coins are never calculated. You will be asked to enter them yourself next.</p>
+            </div>
+          )}
+
+          {mode !== 'ask' && (
+            <form onSubmit={save} className="mt-4 grid gap-4 sm:grid-cols-4">
+              <Field label={mode === 'confirmed' ? 'Total cash (calculated)' : 'Total cash (enter manually)'} htmlFor="mt-cash">
+                {mode === 'confirmed' ? (
+                  <input id="mt-cash" className="input" readOnly value={fmtFull(calculatedCash)} />
+                ) : (
+                  <input id="mt-cash" type="number" min="0" step="any" required autoFocus className="input" value={form.cash} onChange={(e) => setForm({ ...form, cash: e.target.value })} />
+                )}
+              </Field>
+              <Field label="Total coins (enter manually)" htmlFor="mt-coins">
+                <input id="mt-coins" type="number" min="0" step="1" required autoFocus={mode === 'confirmed'} className="input" value={form.coins} onChange={(e) => setForm({ ...form, coins: e.target.value })} />
+              </Field>
+              <Field label="Note (optional)" htmlFor="mt-note">
+                <input id="mt-note" maxLength={200} className="input" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+              </Field>
+              <div className="flex items-end gap-2">
+                <button type="submit" className="btn-gold flex-1" disabled={busy}>{busy ? 'Saving…' : 'Save total'}</button>
+                <button type="button" className="btn-ghost px-2 py-2 text-sm" onClick={() => setMode('ask')}>Back</button>
+              </div>
+            </form>
           )}
           <p className="mt-2 text-xs text-muted">Saving again for the same week replaces that week&apos;s total.</p>
         </Card>
@@ -164,7 +194,7 @@ export default function Maintenance() {
         subtitle="Weekly maintenance totals paid by the coop, plus the office costs."
       />
 
-      <MaintenanceTotals admin={admin} />
+      <MaintenanceTotals admin={admin} calculatedCash={offices.data?.totalWeeklyMoneyCost} />
 
       {offices.data && (
         <div role="status" className="mb-4 rounded-lg border border-line bg-surface p-3 text-sm">
