@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { HttpError, ah, parse, text, optionalText } from '../utils/http.js';
 import { mondayOf, parseDate, DAY } from '../utils/dates.js';
 import { notify, logAction } from '../utils/notify.js';
+import { currentPower, withCosts, officeRule } from '../utils/maintenanceCost.js';
 
 const weekParam = (v) => mondayOf(parseDate(v) || new Date());
 
@@ -18,23 +19,41 @@ export default function opsRoutes(ctx, auth) {
     name: text(40, 1),
     description: optionalText(300),
     level: z.coerce.number().int().min(0).max(1000),
-    weeklyMoneyCost: z.coerce.number().min(0),
-    weeklyCoinCost: z.coerce.number().int().min(0),
+    weeklyMoneyCost: z.coerce.number().min(0).optional().default(0),
+    weeklyCoinCost: z.coerce.number().int().min(0).optional().default(0),
     sortOrder: z.coerce.number().int().min(0).max(1000).optional(),
   });
+
+  /** A level above the office's maximum is a typo, so refuse it. */
+  const checkLevel = (name, level) => {
+    const rule = officeRule(name);
+    if (rule && level > rule.maxLevel) throw new HttpError(400, `${name} has a maximum level of ${rule.maxLevel}.`);
+  };
 
   r.get(
     '/offices',
     ah(async (_req, res) => {
-      res.json({ offices: await prisma.office.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }) });
+      // The cash cost is recalculated from the coop's latest power every time, so it follows power changes.
+      const [rows, { power, date }] = await Promise.all([
+        prisma.office.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }),
+        currentPower(prisma),
+      ]);
+      const offices = withCosts(rows, power);
+      res.json({
+        offices,
+        power,
+        powerDate: date,
+        totalWeeklyMoneyCost: offices.reduce((sum, o) => sum + o.weeklyMoneyCost, 0),
+      });
     }),
   );
 
   r.post(
     '/offices',
-    officer,
+    adminOnly,
     ah(async (req, res) => {
       const data = parse(officeSchema, req.body);
+      checkLevel(data.name, data.level);
       const office = await prisma.office.create({ data });
       await logAction(ctx, req, 'office.create', { id: office.id, name: office.name });
       res.status(201).json({ office });
@@ -43,9 +62,13 @@ export default function opsRoutes(ctx, auth) {
 
   r.patch(
     '/offices/:id',
-    officer,
+    adminOnly,
     ah(async (req, res) => {
       const data = parse(officeSchema.partial(), req.body);
+      if (data.level !== undefined) {
+        const current = data.name ? null : await prisma.office.findUnique({ where: { id: req.params.id } });
+        checkLevel(data.name || current?.name, data.level);
+      }
       const office = await prisma.office.update({ where: { id: req.params.id }, data });
       await logAction(ctx, req, 'office.update', { id: office.id });
       res.json({ office });
@@ -54,7 +77,7 @@ export default function opsRoutes(ctx, auth) {
 
   r.delete(
     '/offices/:id',
-    officer,
+    adminOnly,
     ah(async (req, res) => {
       await prisma.office.delete({ where: { id: req.params.id } });
       await logAction(ctx, req, 'office.delete', { id: req.params.id });

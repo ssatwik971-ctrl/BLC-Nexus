@@ -36,9 +36,8 @@ export default function Dashboard() {
       {data && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Card className="card-lift"><div className="label">Cooperative power</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(data.stats?.power)}</div></Card>
+            <Card className="card-lift"><div className="label">Cooperative power</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(data.power ?? data.stats?.power)}</div></Card>
             <Card className="card-lift"><div className="label">Weekly money cost</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(data.offices.totalWeeklyMoneyCost)}</div></Card>
-            <Card className="card-lift"><div className="label">Weekly coin cost</div><div className="font-display text-2xl font-bold gold-text">{fmtNumber(data.offices.totalWeeklyCoinCost)}</div></Card>
             <Card className="card-lift"><div className="label">This week ends</div><div className="font-display text-xl font-bold gold-text">{fmtDate(data.nextMaintenanceDue)}</div></Card>
           </div>
 
@@ -74,7 +73,7 @@ export default function Dashboard() {
                 {data.offices.list.map((o) => (
                   <li key={o.id} className="flex justify-between py-2 text-sm">
                     <span>{o.name}</span>
-                    <span className="text-muted">Lv {o.level} · {fmtNumber(o.weeklyMoneyCost)}{o.weeklyCoinCost ? ` + ${fmtNumber(o.weeklyCoinCost)} coins` : ''}</span>
+                    <span className="text-muted">Lv {o.level} · {fmtNumber(o.weeklyMoneyCost)}</span>
                   </li>
                 ))}
               </ul>

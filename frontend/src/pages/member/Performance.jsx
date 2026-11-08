@@ -1,14 +1,24 @@
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, EmptyState, ErrorNote, PageHeader, SkeletonBlock, Table } from '../../components/ui.jsx';
 import { useFetch, useTitle } from '../../lib/hooks.js';
-import { fmtDate, fmtNumber } from '../../lib/format.js';
+import { fmtCompact, fmtDate, fmtFull, fmtNumber } from '../../lib/format.js';
 
-const axis = { stroke: 'rgb(var(--c-muted))', fontSize: 12 };
+const axis = { fill: 'rgb(var(--c-muted))', fontSize: 12 };
+const tooltipStyle = { background: 'rgb(var(--c-surface))', border: '1px solid rgb(var(--c-gold))', color: 'rgb(var(--c-text))' };
 
 export default function Performance() {
   useTitle('Performance');
   const { data, error, loading, reload } = useFetch('/audit/snapshots');
-  const rows = (data?.snapshots || []).map((s) => ({ ...s, label: fmtDate(s.date) }));
+  // Oldest first, numbers coerced (the API can return them as strings), one point per date.
+  const rows = (data?.snapshots || [])
+    .map((s) => ({
+      ...s,
+      power: Number(s.power),
+      rank: s.rank === null || s.rank === undefined ? null : Number(s.rank),
+      memberCount: s.memberCount === null || s.memberCount === undefined ? null : Number(s.memberCount),
+      label: fmtDate(s.date),
+    }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
   const latest = rows[rows.length - 1];
 
   return (
@@ -29,12 +39,12 @@ export default function Performance() {
             <h2 className="mb-3 font-display text-lg font-bold tracking-wide text-gold-soft">Power over time</h2>
             <div className="h-72" role="img" aria-label="Line chart of cooperative power over time">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
                   <CartesianGrid stroke="rgb(var(--c-line))" strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={axis} stroke="rgb(var(--c-line))" />
-                  <YAxis tick={axis} stroke="rgb(var(--c-line))" width={60} />
-                  <Tooltip contentStyle={{ background: 'rgb(var(--c-surface))', border: '1px solid rgb(var(--c-gold))', color: 'rgb(var(--c-text))' }} />
-                  <Line type="monotone" dataKey="power" name="Power" stroke="rgb(var(--c-gold))" strokeWidth={3} dot={{ r: 3 }} />
+                  <XAxis dataKey="label" tick={axis} stroke="rgb(var(--c-line))" minTickGap={24} />
+                  <YAxis tick={axis} stroke="rgb(var(--c-line))" width={72} domain={['auto', 'auto']} tickFormatter={(v) => fmtCompact(v)} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${fmtCompact(v)} (${fmtFull(v)})`, 'Power']} />
+                  <Line type="monotone" dataKey="power" name="Power" stroke="rgb(var(--c-gold))" strokeWidth={3} dot={{ r: 3 }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -45,12 +55,12 @@ export default function Performance() {
             <p className="mb-2 text-xs text-muted">A lower rank number is better.</p>
             <div className="h-64" role="img" aria-label="Line chart of leaderboard rank and member count over time">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
                   <CartesianGrid stroke="rgb(var(--c-line))" strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={axis} stroke="rgb(var(--c-line))" />
-                  <YAxis yAxisId="rank" reversed tick={axis} stroke="rgb(var(--c-line))" width={40} allowDecimals={false} />
-                  <YAxis yAxisId="members" orientation="right" tick={axis} stroke="rgb(var(--c-line))" width={40} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: 'rgb(var(--c-surface))', border: '1px solid rgb(var(--c-gold))', color: 'rgb(var(--c-text))' }} />
+                  <XAxis dataKey="label" tick={axis} stroke="rgb(var(--c-line))" minTickGap={24} />
+                  <YAxis yAxisId="rank" reversed tick={axis} stroke="rgb(var(--c-line))" width={48} allowDecimals={false} domain={['auto', 'auto']} tickFormatter={(v) => fmtCompact(v)} />
+                  <YAxis yAxisId="members" orientation="right" tick={axis} stroke="rgb(var(--c-line))" width={48} allowDecimals={false} domain={['auto', 'auto']} tickFormatter={(v) => fmtCompact(v)} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v, name) => [fmtFull(v), name]} />
                   <Legend />
                   <Line yAxisId="rank" type="monotone" dataKey="rank" name="Rank" stroke="rgb(var(--c-gold-soft))" strokeWidth={2} dot={{ r: 3 }} connectNulls />
                   <Line yAxisId="members" type="monotone" dataKey="memberCount" name="Members" stroke="rgb(var(--c-ok))" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls />

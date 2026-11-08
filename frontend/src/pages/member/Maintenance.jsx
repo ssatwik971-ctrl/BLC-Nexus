@@ -6,7 +6,10 @@ import { api, errorMessage } from '../../lib/api.js';
 import { downloadCsv } from '../../lib/csv.js';
 import { useAuth } from '../../lib/auth.jsx';
 import { useFetch, useTitle } from '../../lib/hooks.js';
-import { fmtDate, fmtNumber, isoWeekStart } from '../../lib/format.js';
+import { fmtDate, fmtFull, fmtNumber, isoWeekStart } from '../../lib/format.js';
+
+const OFFICE_NAMES = ['Headquarters', 'Side Job Office', 'Quality Office', 'Energy Office', 'Media Office', 'R&D Office'];
+const MAX_LEVEL = { Headquarters: 10, 'Side Job Office': 5, 'Quality Office': 5, 'Energy Office': 5, 'Media Office': 5, 'R&D Office': 3 };
 
 /** Weekly maintenance totals. Everyone can see them; only the admin enters them. */
 function MaintenanceTotals({ admin }) {
@@ -149,22 +152,55 @@ function MaintenanceTotals({ admin }) {
 export default function Maintenance() {
   useTitle('Maintenance');
   const { hasRole } = useAuth();
-  const officer = hasRole('OFFICER');
   const admin = hasRole('ADMIN');
-  // Officers manage offices below; members just read the list.
-  const offices = useFetch(officer ? null : '/offices');
+  // One fetch feeds the power note and the read-only table; the admin editor reloads it after each change.
+  const offices = useFetch('/offices');
   const officeList = offices.data?.offices || [];
 
   return (
     <>
       <PageHeader
         title="Maintenance"
-        subtitle="Weekly maintenance totals paid by the coop, plus the office list."
+        subtitle="Weekly maintenance totals paid by the coop, plus the office costs."
       />
 
       <MaintenanceTotals admin={admin} />
 
-      {!officer && (
+      {offices.data && (
+        <div role="status" className="mb-4 rounded-lg border border-line bg-surface p-3 text-sm">
+          Office cash costs use the coop power of <strong>{fmtNumber(offices.data.power)}</strong> ({fmtFull(offices.data.power)})
+          {offices.data.powerDate ? <> recorded on {fmtDate(offices.data.powerDate)}</> : null}. They are 0.5% of power, split by office
+          and level, and update by themselves when a new power snapshot is added under Management → Content.
+          Total per week: <strong>{fmtNumber(offices.data.totalWeeklyMoneyCost)}</strong>.
+        </div>
+      )}
+
+      {admin ? (
+        <ResourceManager
+          title="Offices"
+          endpoint="/offices"
+          listKey="offices"
+          canDelete
+          onChange={offices.reload}
+          defaults={{ name: OFFICE_NAMES[0], level: 1, sortOrder: 0 }}
+          columns={[
+            { key: 'name', label: 'Office' },
+            { key: 'level', label: 'Level', render: (o) => (o.maxLevel ? `${o.level} / ${o.maxLevel}` : o.level) },
+            { key: 'weeklyMoneyCost', label: 'Weekly cash', render: (o) => fmtNumber(o.weeklyMoneyCost) },
+          ]}
+          fields={[
+            { name: 'name', label: 'Office', type: 'select', required: true, options: OFFICE_NAMES },
+            { name: 'level', label: 'Level', type: 'number', required: true },
+            { name: 'sortOrder', label: 'Sort order', type: 'number' },
+          ]}
+          toForm={(o) => ({ name: o.name, level: o.level, sortOrder: o.sortOrder })}
+          toPayload={(f) => {
+            const max = MAX_LEVEL[f.name];
+            if (max && Number(f.level) > max) throw new Error(`${f.name} has a maximum level of ${max}.`);
+            return { name: f.name, level: Number(f.level), sortOrder: Number(f.sortOrder || 0) };
+          }}
+        />
+      ) : (
         <section aria-labelledby="off-h">
           <h2 id="off-h" className="mb-2 font-display text-xl font-bold">Offices</h2>
           {offices.loading && <SkeletonBlock rows={3} />}
@@ -177,17 +213,15 @@ export default function Maintenance() {
                   <tr className="border-b border-line">
                     <th className="th" scope="col">Office</th>
                     <th className="th" scope="col">Level</th>
-                    <th className="th" scope="col">Weekly money</th>
-                    <th className="th" scope="col">Weekly coins</th>
+                    <th className="th" scope="col">Weekly cash</th>
                   </tr>
                 </thead>
                 <tbody>
                   {officeList.map((o) => (
                     <tr key={o.id} className="border-b border-line/60">
                       <td className="td font-semibold">{o.name}</td>
-                      <td className="td">{o.level}</td>
+                      <td className="td">{o.maxLevel ? `${o.level} / ${o.maxLevel}` : o.level}</td>
                       <td className="td">{fmtNumber(o.weeklyMoneyCost)}</td>
-                      <td className="td">{fmtNumber(o.weeklyCoinCost)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -195,33 +229,6 @@ export default function Maintenance() {
             </div>
           )}
         </section>
-      )}
-
-      {officer && (
-        <div className="mt-8">
-          <ResourceManager
-            title="Offices"
-            endpoint="/offices"
-            listKey="offices"
-            canDelete
-            defaults={{ level: 1, weeklyMoneyCost: 0, weeklyCoinCost: 0, sortOrder: 0 }}
-            columns={[
-              { key: 'name', label: 'Office' },
-              { key: 'level', label: 'Level' },
-              { key: 'weeklyMoneyCost', label: 'Weekly money', render: (o) => fmtNumber(o.weeklyMoneyCost) },
-              { key: 'weeklyCoinCost', label: 'Weekly coins', render: (o) => fmtNumber(o.weeklyCoinCost) },
-            ]}
-            fields={[
-              { name: 'name', label: 'Name', type: 'text', required: true },
-              { name: 'description', label: 'Description', type: 'textarea' },
-              { name: 'level', label: 'Level', type: 'number', required: true },
-              { name: 'weeklyMoneyCost', label: 'Weekly money cost', type: 'number', required: true },
-              { name: 'weeklyCoinCost', label: 'Weekly coin cost', type: 'number', required: true },
-              { name: 'sortOrder', label: 'Sort order', type: 'number' },
-            ]}
-            toForm={(o) => ({ ...o, description: o.description || '' })}
-          />
-        </div>
       )}
     </>
   );

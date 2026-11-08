@@ -35,11 +35,13 @@ describe('role-based access control', () => {
     expect((await t.request('GET', '/api/admin/logs', { token: member })).status).toBe(403);
   });
 
-  it('officers do the day-to-day work: offices (create and delete), settings, logs, member list', async () => {
-    const created = await t.request('POST', '/api/offices', { token: officer, body: office });
+  it('officers do the day-to-day work: settings, logs, member list (offices are admin only)', async () => {
+    expect((await t.request('POST', '/api/offices', { token: officer, body: office })).status).toBe(403);
+    const created = await t.request('POST', '/api/offices', { cookie: admin, body: office });
     expect(created.status).toBe(201);
     const id = created.body.office.id;
-    expect((await t.request('DELETE', `/api/offices/${id}`, { token: officer })).status).toBe(200);
+    expect((await t.request('DELETE', `/api/offices/${id}`, { token: officer })).status).toBe(403);
+    expect((await t.request('DELETE', `/api/offices/${id}`, { cookie: admin })).status).toBe(200);
     expect((await t.request('PUT', '/api/admin/settings/recruiting', { token: officer, body: { value: false } })).status).toBe(200);
     expect((await t.request('GET', '/api/admin/logs', { token: officer })).status).toBe(200);
     const users = await t.request('GET', '/api/admin/users', { token: officer });
@@ -65,9 +67,9 @@ describe('role-based access control', () => {
     expect(byAdmin.status).toBe(200);
     expect(byAdmin.body.user.role).toBe('OFFICER');
     // role changes take effect immediately (no stale token claims)
-    expect((await t.request('POST', '/api/offices', { token: member, body: { ...office, name: 'Promoted Office' } })).status).toBe(201);
+    expect((await t.request('POST', '/api/forum/categories', { token: member, body: { name: 'Promoted Category' } })).status).toBe(201);
     await t.request('PATCH', `/api/admin/users/${memberUser.id}`, { cookie: admin, body: { role: 'MEMBER' } });
-    expect((await t.request('POST', '/api/offices', { token: member, body: { ...office, name: 'Demoted Office' } })).status).toBe(403);
+    expect((await t.request('POST', '/api/forum/categories', { token: member, body: { name: 'Demoted Category' } })).status).toBe(403);
   });
 
   it('only the admin can invite members', async () => {
@@ -120,7 +122,7 @@ describe('role-based access control', () => {
 
   it('strips HTML from user-supplied text', async () => {
     const res = await t.request('POST', '/api/offices', {
-      token: officer,
+      cookie: admin,
       body: { ...office, name: 'Clean <script>alert(1)</script>Office' },
     });
     expect(res.status).toBe(201);

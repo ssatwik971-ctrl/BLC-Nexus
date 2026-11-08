@@ -39,8 +39,14 @@ function table(defaults = {}) {
     async findFirst({ where } = {}) {
       return rows.find((r) => matches(r, where)) || null;
     },
-    async findMany({ where, take } = {}) {
-      const found = rows.filter((r) => matches(r, where));
+    async findMany({ where, take, orderBy } = {}) {
+      let found = rows.filter((r) => matches(r, where));
+      // Only single-field orderBy is needed by the code under test.
+      const order = Array.isArray(orderBy) ? orderBy[0] : orderBy;
+      if (order) {
+        const [field, dir] = Object.entries(order)[0];
+        found = [...found].sort((a, b) => (a[field] > b[field] ? 1 : a[field] < b[field] ? -1 : 0) * (dir === 'desc' ? -1 : 1));
+      }
       return take ? found.slice(0, take) : found;
     },
     async count({ where } = {}) {
@@ -104,6 +110,7 @@ export function createFakePrisma() {
     application: table({ status: 'PENDING' }),
     office: table({ level: 1, weeklyMoneyCost: 0, weeklyCoinCost: 0, sortOrder: 0 }),
     siteSetting: table(),
+    auditSnapshot: table(),
     auditLog: table(),
     notification: table({ read: false }),
     leaderboardEntry: table(),

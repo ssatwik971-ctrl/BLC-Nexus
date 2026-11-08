@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { HttpError, ah, parse, text, optionalText, publicUser, atLeast } from '../utils/http.js';
 import { mondayOf, DAY } from '../utils/dates.js';
 import { readSettings } from './public.js';
+import { currentPower, withCosts } from '../utils/maintenanceCost.js';
 
 const HIDEABLE = ['playerId', 'timezone', 'contact', 'avatarUrl'];
 
@@ -27,14 +28,16 @@ export default function memberRoutes(ctx) {
       const week = mondayOf(now);
       const nextDue = new Date(week.getTime() + 7 * DAY);
 
-      const [settings, offices, myStatus, votes, unread] = await Promise.all([
+      const [settings, officeRows, { power }, myStatus, votes, unread] = await Promise.all([
         readSettings(prisma),
         prisma.office.findMany({ orderBy: { sortOrder: 'asc' } }),
+        currentPower(prisma),
         prisma.weeklyDonationStatus.findFirst({ where: { userId: req.user.id, weekStart: week } }),
         prisma.vote.findMany({ where: { status: 'OPEN', endTime: { gt: now } } }),
         prisma.notification.count({ where: { userId: req.user.id, read: false } }),
       ]);
 
+      const offices = withCosts(officeRows, power);
       const myVotes = await prisma.voteRecord.findMany({
         where: { userId: req.user.id, voteId: { in: votes.map((v) => v.id) } },
       });
@@ -43,6 +46,7 @@ export default function memberRoutes(ctx) {
 
       res.json({
         stats: settings.stats,
+        power,
         offices: {
           count: offices.length,
           totalWeeklyMoneyCost: offices.reduce((s, o) => s + o.weeklyMoneyCost, 0),
